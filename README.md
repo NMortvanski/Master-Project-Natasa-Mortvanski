@@ -87,10 +87,7 @@ This is a repository containing the R project with the following directories:
 
   Contains make_reports.R - this script defines function *report* that makes HTML reports out of Rmd scripts 
     and stores them in 04_reports directory.
-    
 \
-\
-
 * Density_Box_App: 
 \
   Contains R script for running Shiny app that creates density and box plots of alpha diversity distributions 
