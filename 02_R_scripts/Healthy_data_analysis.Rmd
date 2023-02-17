@@ -35,9 +35,9 @@ library(RColorBrewer)
 Load data: 
 
 ```{r}
-AGP <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/AGP_all.csv", header = TRUE, sep = ",")  
+AGP <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_all.csv.gz", header = TRUE, sep = ",")  
 
-all_healthy <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/AGP_healthy.csv", header = TRUE, sep = ",")  
+all_healthy <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz", header = TRUE, sep = ",")  
 
 nrow(AGP)
 nrow(all_healthy)
@@ -149,7 +149,6 @@ corrplot(cor_matrix, type = "upper", order = "hclust",
 
 ```{r}
 chart.Correlation(all_healthy[, 2:11], histogram=TRUE, pch=19)
-#chart.Correlation(all_healthy[, 2:9], histogram=TRUE, pch=19)
 ```
 
 For numerical variables we can perform simple Pearson's correlation coefficient:
@@ -164,12 +163,10 @@ data_num$birth_year <- NULL
 
 # Save results as data frame
 correlation_num <- as.data.frame(cor(data_num[-c(11:14)], data_num[-c(1:10)]))
-#correlation_num <- as.data.frame(cor(data_num[-c(9:13)], data_num[-c(1:8)]))
 correlation_num %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
 cor_matrix <- cor(data_num[-c(1:10)], data_num[-c(11:14)])
-#cor_matrix <- cor(data_num[-c(1:8)], data_num[-c(9:13)])
 
 corrplot(cor_matrix, tl.col = "black", tl.srt = 45)
 ```
@@ -204,9 +201,6 @@ cat_cols <- unlist(lapply(all_healthy, is.character))
 # Subset numeric columns of data
 data_cat <- all_healthy[ , cat_cols]
 data_cat$sample_id <- NULL
-#head(data_cat)
-
-#ncol(data_cat)
 ```
 
 ```{r, message=FALSE}
@@ -219,7 +213,6 @@ for (i in 1:ncol(data_cat)){
 }
 
 for (j in 2:11){
-#for (j in 2:9){
   temp <- data.frame(col = numeric(0))
   for (i in 1:ncol(data_cat)){
     names(temp)[1] <- colnames(all_healthy)[j]
@@ -251,7 +244,6 @@ rsqXY
 most_correlated <- data.frame(variable=character(20),regression_coefficient=numeric(20))
 
 for (j in 2:11){
-#for (j in 2:9){
   temp <- data.frame(variable=character(20), regression_coefficient=numeric(20))
   names(temp)[2] <- paste("regression_coefficient", colnames(correlation_cat)[j], sep="_")
   temp[,1] <- head(correlation_cat[order(-correlation_cat[,j]),]$variable, 20)
@@ -272,29 +264,9 @@ cor_matrix_cat <- data.matrix(cor_matrix_cat)
 # Scale regression coefficients from 0 to 1 and order matrix by the decreasing value of Shannon's entropy
 dat <- as.matrix(apply(cor_matrix_cat, MARGIN = 2, FUN = function(X) (X - min(X))/diff(range(X))))
 dat <- dat[order(dat[,1], decreasing=TRUE),]
-#dat_1 <- dat[,-6]
 
 # Plot the "correlation" matrix
 corrplot(dat[1:20,], tl.col = "black", tl.srt = 45)
-#corrplot(dat_1[1:20,], tl.col = "black", tl.srt = 45)
-
-# Scale regression coefficients from 0 to 1 and order matrix by the decreasing value of Inverse Simpson's index
-#dat_2 <- dat[order(dat[,6], decreasing=TRUE),]
-
-# Plot the "correlation" matrix
-#corrplot(dat_2[1:20,], tl.col = "black", tl.srt = 45)
-```
-
-```{r,  include=FALSE}
-# flextable(most_correlated[,1:2])
-# flextable(most_correlated[,3:4])
-# flextable(most_correlated[,5:6])
-# flextable(most_correlated[,7:8])
-# flextable(most_correlated[,9:10])
-# flextable(most_correlated[,11:12])
-# flextable(most_correlated[,13:14])
-# flextable(most_correlated[,15:16])
-# flextable(most_correlated[,17:18])
 ```
 
 
@@ -316,7 +288,7 @@ corrplot(dat[1:20,], tl.col = "black", tl.srt = 45)
 #plot_grid(shannon_density, plot_shannon_box, nrow = 2)
 ```
 
-1) Density plots and  Box plots -> in an app
+1) Density plots and  Box plots -> in the Density_Box_App
 
 ```{r, include=FALSE}
 # library(RColorBrewer)
@@ -443,7 +415,7 @@ IMPORTANT:
 bmi, diary products consumption, race, bowel_movement_quality
 \
 \
-Check if two groups belong to the same distribution -> in an app
+Check if two groups belong to the same distribution -> in the Density_Box_App
 
 ```{r,  include=FALSE}
 # compare <- c("sex", "age_cat", "race")

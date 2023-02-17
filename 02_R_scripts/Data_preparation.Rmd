@@ -36,7 +36,7 @@ As a source of samples for healthy control we chose American Gut Project study. 
 Loading the metadata file for AGP study samples:
 
 ```{r}
-AGP_metadata <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/10317_20221012-092710.txt")
+AGP_metadata <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/10317_20221012-092710.txt.gz")
 #colnames(AGP_metadata)
 
 nrow(AGP_metadata)
@@ -45,16 +45,16 @@ nrow(AGP_metadata)
 Loading tables containing different alpha diversity metrics:
 
 ```{r}
-shannon_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/shannon_AGP_all.tsv")
-chao1_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/chao1_AGP_all.tsv")
-menhinick_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/menhinick_AGP_all.tsv")
-margalef_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/margalef_AGP_all.tsv")
-simpson_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/simpson_AGP_all.tsv")
-fisher_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/fisher_AGP_all.tsv")
-gini_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/gini_AGP_all.tsv")
-strong_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/strong_AGP_all.tsv")
-faith_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/faith_AGP_all.tsv")
-pielou_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/pielou_AGP_all.tsv")
+shannon_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/shannon_AGP_all.tsv.gz")
+chao1_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/chao1_AGP_all.tsv.gz")
+menhinick_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/menhinick_AGP_all.tsv.gz")
+margalef_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/margalef_AGP_all.tsv.gz")
+simpson_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/simpson_AGP_all.tsv.gz")
+fisher_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/fisher_AGP_all.tsv.gz")
+gini_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/gini_AGP_all.tsv.gz")
+strong_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/strong_AGP_all.tsv.gz")
+faith_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/faith_AGP_all.tsv.gz")
+pielou_AGP <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/01_AGP_data/pielou_AGP_all.tsv.gz")
 
 # Make inverse Simpson
 #simpson_AGP$inverse_simpson <- sapply(simpson_AGP$simpson, function(x) 1/x)
@@ -342,8 +342,8 @@ Export table into tsv format:
 ```{r}
 #CSV
 
-write.csv(AGP, "~/Desktop/master_project/project_analysis/01_tidy_data/AGP_all.csv", row.names=FALSE)
-write.csv(AGP_healthy_subset, "~/Desktop/master_project/project_analysis/01_tidy_data/AGP_healthy.csv", row.names=FALSE)
+write.csv(AGP, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_all.csv.gz"), row.names=FALSE)
+write.csv(AGP_healthy_subset, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz"), row.names=FALSE)
 
 ```
 
@@ -365,19 +365,19 @@ All studies' data and metadata is available on Qiita platform.
 # Prepare metadata files
 
 # for study 1.
-IBD_meta_1 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_4068.tsv")  
+IBD_meta_1 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_4068.tsv.gz")  
 
 # for study 2.
-IBD_meta_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_8715.tsv") 
+IBD_meta_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_8715.tsv.gz") 
 
 # for study 3.
-CD_2a <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/sample_information_from_prep_569.tsv")
+CD_2a <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/sample_information_from_prep_569.tsv.gz")
 
 # for study 4.
-trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/sample_information_transpl_CDI_IBD.txt")
+trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/sample_information_transpl_CDI_IBD.txt.gz")
 
 # for study 5.
-C_diff_tr <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/sample_information_from_prep_262.tsv")
+C_diff_tr <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/sample_information_from_prep_262.tsv.gz")
 
 
 # change the name of second column in IBD_meta_1 so it matches colimn names n IBD_meta_2
@@ -436,17 +436,17 @@ IBD_meta_all <- IBD_meta_all %>%
 ```
 
 ```{r}
-# Load .tsv files from inflammatory bowel disease analysis
-shannon_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/shannon_IBD.tsv")
-chao1_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/chao1_IBD.tsv")
-fisher_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/fisher_IBD.tsv")
-margalef_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/margalef_IBD.tsv")
-simpson_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/simpson_IBD.tsv")
-gini_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/gini_IBD.tsv")
-menhinick_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/menhinick_IBD.tsv")
-strong_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/strong_IBD.tsv")
-faith_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/faith_IBD.tsv")
-pielou_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/pielou_IBD.tsv")
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/shannon_IBD.tsv.gz")
+chao1_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/chao1_IBD.tsv.gz")
+fisher_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/fisher_IBD.tsv.gz")
+margalef_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/margalef_IBD.tsv.gz")
+simpson_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/simpson_IBD.tsv.gz")
+gini_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/gini_IBD.tsv.gz")
+menhinick_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/menhinick_IBD.tsv.gz")
+strong_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/strong_IBD.tsv.gz")
+faith_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/faith_IBD.tsv.gz")
+pielou_IBD <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/02_inflammatory_bowel_disease/pielou_IBD.tsv.gz")
 
 #simpson_IBD$inverse_simpson <- sapply(simpson_IBD$simpson, function(x) 1/x)
 
@@ -477,9 +477,9 @@ all_IBD <- all_IBD[complete.cases(all_IBD),]
 ```
 
 ```{r}
-#export merged dataframe into .tsv file
+#export merged dataframe into .tsv.gz file
 
-write.csv(all_IBD, "~/Desktop/master_project/project_analysis/01_tidy_data/IBD_all.csv", row.names=FALSE)
+write.csv(all_IBD, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/IBD_all.csv.gz"), row.names=FALSE)
 ```
 
 ## Longitudinal Chron's disease study (3.)
@@ -491,17 +491,17 @@ names(CD_2)[names(CD_2) == 'sample_name'] <- 'sample_id'
 names(CD_2)[names(CD_2) == 'ibd'] <- 'condition'
 
 
-# Load .tsv files from inflammatory bowel disease analysis
-shannon_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_shannon.tsv")
-chao1_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_chao1.tsv")
-fisher_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_fisher.tsv")
-margalef_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_margalef.tsv")
-simpson_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_simpson.tsv")
-gini_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_gini.tsv")
-menhinick_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_menhinick.tsv")
-strong_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_strong.tsv")
-faith_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_faith.tsv")
-pielou_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_pielou.tsv")
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_shannon.tsv.gz")
+chao1_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_chao1.tsv.gz")
+fisher_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_fisher.tsv.gz")
+margalef_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_margalef.tsv.gz")
+simpson_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_simpson.tsv.gz")
+gini_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_gini.tsv.gz")
+menhinick_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_menhinick.tsv.gz")
+strong_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_strong.tsv.gz")
+faith_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_faith.tsv.gz")
+pielou_CD_2 <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/05_chrons_disease_longitudinal/CD_2_pielou.tsv.gz")
 
 #simpson_CD_2$inverse_simpson <- sapply(simpson_CD_2$simpson, function(x) 1/x)
 
@@ -539,9 +539,9 @@ table(all_CD_2$description, all_CD_2$condition)
 ```
 
 ```{r}
-#export merged dataframe into .tsv file
+#export merged dataframe into .tsv.gz file
 
-write.csv(all_CD_2, "~/Desktop/master_project/project_analysis/01_tidy_data/all_CD_2.csv", row.names=FALSE)
+write.csv(all_CD_2, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_CD_2.csv.gz"), row.names=FALSE)
 
 ```
 
@@ -557,17 +557,17 @@ trans_IBD_CDI[trans_IBD_CDI == "microscopic colitis"] <-'CDI + MC'
 trans_IBD_CDI[trans_IBD_CDI == "Ulcerative colitis"] <-'CDI + UC'
 trans_IBD_CDI[trans_IBD_CDI == "no IBD"] <-'CDI'
 
-# Load .tsv files from inflammatory bowel disease analysis
-shannon_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_shannon.tsv")
-chao1_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_chao1.tsv")
-fisher_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_fisher.tsv")
-margalef_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_margalef.tsv")
-simpson_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_simpson.tsv")
-gini_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_gini.tsv")
-menhinick_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_menhinick.tsv")
-strong_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_strong.tsv")
-faith_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_faith.tsv")
-pielou_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_pielou.tsv")
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_shannon.tsv.gz")
+chao1_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_chao1.tsv.gz")
+fisher_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_fisher.tsv.gz")
+margalef_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_margalef.tsv.gz")
+simpson_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_simpson.tsv.gz")
+gini_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_gini.tsv.gz")
+menhinick_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_menhinick.tsv.gz")
+strong_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_strong.tsv.gz")
+faith_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_faith.tsv.gz")
+pielou_trans_IBD_CDI <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_pielou.tsv.gz")
 
 #simpson_trans_IBD_CDI$inverse_simpson <- sapply(simpson_trans_IBD_CDI$simpson, function(x) 1/x)
 
@@ -610,9 +610,9 @@ nrow(all_trans_IBD_CDI)
 ```
 
 ```{r}
-#export merged dataframe into .tsv file
+#export merged dataframe into .tsv.gz file
 
-write.csv(all_trans_IBD_CDI, "~/Desktop/master_project/project_analysis/01_tidy_data/all_trans_IBD_CDI.csv", row.names=FALSE)
+write.csv(all_trans_IBD_CDI, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_trans_IBD_CDI.csv.gz"), row.names=FALSE)
 ```
 
 # Changes following fecal microbial transplantation for recurrent CDI (5.)
@@ -626,17 +626,17 @@ names(C_diff_trans)[names(C_diff_trans) == 'host_body_mass_index'] <- 'body_mass
 names(C_diff_trans)[names(C_diff_trans) == 'day_relative_to_fmt'] <- 'day_since_fmt'
 
 
-# Load .tsv files from inflammatory bowel disease analysis
-shannon_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_shannon.tsv")
-chao1_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_chao1.tsv")
-fisher_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_fisher.tsv")
-margalef_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_margalef.tsv")
-simpson_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_simpson.tsv")
-gini_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_gini.tsv")
-menhinick_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_menhinick.tsv")
-strong_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_strong.tsv")
-pielou_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_pielou.tsv")
-faith_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_faith.tsv")
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_shannon.tsv.gz")
+chao1_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_chao1.tsv.gz")
+fisher_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_fisher.tsv.gz")
+margalef_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_margalef.tsv.gz")
+simpson_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_simpson.tsv.gz")
+gini_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_gini.tsv.gz")
+menhinick_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_menhinick.tsv.gz")
+strong_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_strong.tsv.gz")
+pielou_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_pielou.tsv.gz")
+faith_C_diff_trans <- read.delim("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/00_raw_data/04_C_difficile/cdiff_faith.tsv.gz")
 
 names(faith_C_diff_trans)[names(faith_C_diff_trans) == 'X.SampleID'] <- 'X'
 
@@ -678,9 +678,9 @@ nrow(all_C_diff_trans)
 ```
 
 ```{r}
-#export merged dataframe into .tsv file
+#export merged dataframe into .tsv.gz file
 
-write.csv(all_C_diff_trans, "~/Desktop/master_project/project_analysis/01_tidy_data/all_C_diff_trans.csv", row.names=FALSE)
+write.csv(all_C_diff_trans, gzfile("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_C_diff_trans.csv.gz"), row.names=FALSE)
 ```
 
 # Session information

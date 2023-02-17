@@ -47,10 +47,10 @@ Prepare data frames for *healthy samples from American Gut Study* subsample:
 
 ```{r}
 # Load all AGP data
-AGP <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/AGP_all.csv", header = TRUE, sep = ",")  
+AGP <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_all.csv.gz", header = TRUE, sep = ",")  
 
 # Load healthy samples' table
-all_healthy <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/AGP_healthy.csv", header = TRUE, sep = ",")    
+all_healthy <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz", header = TRUE, sep = ",")    
 
 #all_healthy <- all_healthy[1:10]
 
@@ -67,26 +67,26 @@ names(all_healthy)[names(all_healthy) == 'host_age'] <- 'age'
 Load data for *Inflammatory Bowel Disease* data sets
 
 ```{r}
-all_IBD <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/IBD_all.csv", header = TRUE, sep = ",")  
+all_IBD <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/IBD_all.csv.gz", header = TRUE, sep = ",")  
 
 ```
 
 Load data for *Fecal transplant - CDI with underlying IBD* data set
 
 ```{r}
-trans_IBD_CDI <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/all_trans_IBD_CDI.csv", header = TRUE, sep = ",")  
+trans_IBD_CDI <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_trans_IBD_CDI.csv.gz", header = TRUE, sep = ",")  
 ```
 
 Load data for *Changes following fecal microbial transplantation for recurrent CDI* data set
 
 ```{r}
-C_diff_trans <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/all_C_diff_trans.csv", header = TRUE, sep = ",")  
+C_diff_trans <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_C_diff_trans.csv.gz", header = TRUE, sep = ",")  
 ```
 
 Load data for *Longitudinal Chron's disease study* data set
 
 ```{r}
-CD_2 <- read.csv("~/Desktop/master_project/project_analysis/01_tidy_data/all_CD_2.csv", header = TRUE, sep = ",")  
+CD_2 <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/all_CD_2.csv.gz", header = TRUE, sep = ",")  
 ```
 
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
