@@ -92,9 +92,6 @@ This is a repository containing the R project with the following directories:
 \
 
 * Density_Box_App: 
-
 \
-\
-
   Contains R script for running Shiny app that creates density and box plots of alpha diversity distributions 
   in healthy dataset stratified by different columns of metadata.
