@@ -57,3 +57,7 @@ This is a repository containing the R project with the following directories:
 
   Contains R script for running Shiny app that creates density and box plots of alpha diversity distributions 
   in healthy dataset stratified by different columns of metadata.
+
+* run_all.r:
+
+  Script that utilize the make_reports.R function and creates HTML reports for all Rmd files in the project.
