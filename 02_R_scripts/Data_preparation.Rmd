@@ -1,0 +1,692 @@
+---
+title: "Data preparation"
+author:
+- name: "Natasa Mortvanski"
+  affiliation: Universitat Pompeu Fabra
+  email: natasa.mortvanski01@estudiant.upf.edu
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document contains the code for data preparation (loading different alpha metrics, filtering of the samples and columns of interest) of American Gut Project data that is going to be used as healthy control in this Master thesis, as well as data from various studies of different pathologies supposedly affecting gut microbiome alpha diversity.
+
+# Healthy data preprocessing
+
+Loading necessary libraries:
+
+```{r}
+library(dplyr)
+#install.packages('purrr')
+library(purrr)
+library(tibble)
+library(ggplot2)
+library(stringr)
+```
+
+### About dataset:
+
+As a source of samples for healthy control we chose American Gut Project study. Data and metadata are available on Qiita platform:
+
+1. Subset of the American Gut Project dataset (healthy dataset) -> 10582 samples (total), 851 samples (healhty) [dataset link](https://qiita.ucsd.edu/study/description/10317)
+
+Loading the metadata file for AGP study samples:
+
+```{r}
+AGP_metadata <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/10317_20221012-092710.txt")
+#colnames(AGP_metadata)
+
+nrow(AGP_metadata)
+```
+
+Loading tables containing different alpha diversity metrics:
+
+```{r}
+shannon_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/shannon_AGP_all.tsv")
+chao1_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/chao1_AGP_all.tsv")
+menhinick_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/menhinick_AGP_all.tsv")
+margalef_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/margalef_AGP_all.tsv")
+simpson_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/simpson_AGP_all.tsv")
+fisher_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/fisher_AGP_all.tsv")
+gini_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/gini_AGP_all.tsv")
+strong_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/strong_AGP_all.tsv")
+faith_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/faith_AGP_all.tsv")
+pielou_AGP <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/01_AGP_data/pielou_AGP_all.tsv")
+
+# Make inverse Simpson
+#simpson_AGP$inverse_simpson <- sapply(simpson_AGP$simpson, function(x) 1/x)
+
+names(faith_AGP)[names(faith_AGP) == 'X.SampleID'] <- 'X'
+
+# Merge all alpha diversity tables 
+all_alpha <- list(shannon_AGP, chao1_AGP, menhinick_AGP, margalef_AGP, fisher_AGP, gini_AGP, strong_AGP, simpson_AGP, faith_AGP, pielou_AGP) 
+
+all_alpha <- all_alpha %>% reduce(inner_join, by="X")
+names(all_alpha)[names(all_alpha) == 'X'] <- 'sample_id'
+
+nrow(all_alpha)
+```
+
+Now combine alpha metrics and metadata in the same dataframe (`AGP`):
+
+```{r}
+# Merge all_alpha and AGP_metadata
+AGP <- all_alpha %>% left_join(AGP_metadata, by=c('sample_id' = 'sample_name'))
+
+# Replace NA with empty string
+AGP <- replace(AGP, is.na(AGP), "")
+
+nrow(AGP)
+```
+
+We are left with `r nrow(AGP)` samples for which alpha metrics were calculated.
+\
+Lets filter out samples that are truly healthy:
+
+```{r}
+# Filter samples by age (only adult samples)
+AGP_healthy_subset <- AGP %>%
+  filter(age_cat== "20s" | 
+         age_cat== "30s" | 
+         age_cat== "40s" | 
+         age_cat== "50s" | 
+         age_cat== "60s")
+
+# Filter out stool and feces samples
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(sample_type=="feces" | 
+         sample_type=="Stool")
+
+# Include only samples that have reported not having any of the following diseases
+AGP_healthy_subset_1 <- AGP_healthy_subset %>%
+  filter(host_body_mass_index > 18.5 & 
+         host_body_mass_index < 25 & 
+         antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition" &
+         ibs=="I do not have this condition" &
+         cdiff=="I do not have this condition" & 
+         cancer=="I do not have this condition" &
+         mental_illness=="No" &
+         mental_illness_type_substance_abuse=="false" &
+         mental_illness_type_depression=="false" &
+         asd=="I do not have this condition" &
+         alzheimers=="I do not have this condition" &
+         add_adhd=="I do not have this condition" &
+         epilepsy_or_seizure_disorder=="I do not have this condition" &
+         sibo=="I do not have this condition" &   # small intestinal bacterial overgrowth
+         pku =="I do not have this condition" &   # phenylketonuria
+         thyroid=="I do not have this condition" &
+         kidney_disease=="I do not have this condition" &
+         clinical_condition=="I do not have this condition" &
+         acid_reflux=="I do not have this condition" &
+         autoimmune=="I do not have this condition" &
+         cardiovascular_disease=="I do not have this condition" &
+         lung_disease =="I do not have this condition" &
+         liver_disease =="I do not have this condition")
+
+# Other solution is to aplly only filters used in original AGP study:
+AGP_healthy_subset_2 <- AGP_healthy_subset %>%
+  filter(host_body_mass_index > 18.5 & 
+         host_body_mass_index < 30 & 
+         antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition")
+
+# AGP filters + IBS and Cdiff
+AGP_healthy_subset_3 <- AGP_healthy_subset %>%
+  filter(host_body_mass_index > 18.5 & 
+         host_body_mass_index < 30 & 
+         antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition" &
+         ibs=="I do not have this condition" &
+         cdiff=="I do not have this condition")
+
+# Number of samples without any reported clinical condition
+nrow(AGP_healthy_subset_1)  #861
+
+# Number of samples after filtering only by criteria reported by AGP paper
+nrow(AGP_healthy_subset_2)  #3275
+
+# Number of samples after filtering only by criteria reported by AGP paper + without IBS and Cdiff
+nrow(AGP_healthy_subset_3)  #2145
+```
+
+Lets see if there is a difference in values of alpha diversity metrics in different subsets:
+
+```{r}
+# make tables of summaries of all 4 subsets of AGP data
+tabs <- list()
+subsets <- list(AGP_healthy_subset, AGP_healthy_subset_1, AGP_healthy_subset_2, AGP_healthy_subset_3)
+
+for(x in 1:length(subsets)){
+tabs[[x]] <- subsets[[x]] %>% 
+  summarise(shannon_entropy,
+            chao1,
+            menhinick,
+            margalef,
+            simpson,
+            pielou_evenness,
+            #inverse_simpson,
+            fisher_alpha,
+            gini_index,
+            strong,
+            faith_pd) %>% 
+  broom::tidy()
+}
+
+# Extract minimums, means and maximums of each metric and combine them in new tables
+cols <- c("column", "mean", "min", "max")
+metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "gini_index", "simpson", "pielou_evenness", "strong", "faith_pd" ) ##, "inverse_simpson"
+alpha_tables <- list()
+
+for (i in 1:length(metric)){
+  alpha_tables[[i]] <- tibble()
+  for (x in tabs){
+    alpha_tables[[i]] <- bind_rows(alpha_tables[[i]], filter(x, column == metric[[i]]))
+  }
+  alpha_tables[[i]] <- alpha_tables[[i]][, names(alpha_tables[[i]]) %in% cols]
+  alpha_tables[[i]] <- alpha_tables[[i]] %>% add_column(subsample = c("AGP fecal samples of participants aged 20-69", "healthy AGP participants without any reported disease", "healthy AGP participants (AGP paper criteria)", "healthy AGP participants (AGP paper criteria + no IBD nor Cdiff)"), .before = "column") 
+}
+
+all_alpha_tables<- tibble()
+for(x in 1:length(alpha_tables)){
+  all_alpha_tables <- bind_rows(all_alpha_tables, alpha_tables[[x]])
+}
+```
+
+```{r}
+# Plot values of min, mean and max for each subset of AGP data
+
+all_alpha_tables %>%
+  ggplot(aes(x= min, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+
+all_alpha_tables %>%
+  ggplot(aes(x= mean, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+
+all_alpha_tables %>%
+  ggplot(aes(x= max, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+```
+
+Group of healthy AGP participants without any reported disease has the highest 
+minimums and means of: Chao1, Fisher's, Margalef's, Menhinick's and Shannon's 
+alpha diversity index Gini's and Strong's have the highest minimum in this group 
+but the lowest mean.
+
+For now lets use this subset of healthy samples (healthy AGP participants without any reported disease):
+
+```{r}
+AGP_healthy_subset <- AGP_healthy_subset_1
+
+nrow(AGP_healthy_subset)
+```
+
+There is `r nrow(AGP_healthy_subset)` healthy samples.
+
+One of the things we are interested in is the nutrition of study participants.
+AGP suposedly incorporates data from Vioscreen questionaire about nutrition habits.
+Let's examine those columns:
+
+```{r}
+# Examine Vioscreen data columns
+cols <- grep("^vioscreen.?", names(AGP_healthy_subset), value=T)
+
+# Show unique values in each of the vioscreen columns
+#lapply(AGP_healthy_subset[,cols], unique)
+```
+
+Vioscreen columns are highly redundand (empty). Furthermore, only available 
+values for vioscreen columns are: "" and "not applicable". We can delete 
+vioscreen columns from the table AGP_healthy_subset because they are not 
+informative:
+
+```{r}
+# Delete vioscreen columns
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+```
+
+Delete columns that are not informative enough, for example mostly empty, mostly 
+consisting of 'Unspecified' answer or uniform (only have one category, so useless 
+for comparisons):
+
+```{r}
+# Delete almost empty columns (missing more than 90% of the samples)
+empty_columns <- colSums(is.na(AGP_healthy_subset) | AGP_healthy_subset == "") > nrow(AGP_healthy_subset)*0.9
+# see names of the empty columns
+#names(empty_columns)[empty_columns == "TRUE"]
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% empty_columns]
+
+# Delete columns that have more than 80% Uncpecified answers
+unspec_columns <- colSums(AGP_healthy_subset == "Unspecified" | AGP_healthy_subset == "") > nrow(AGP_healthy_subset)*0.8
+# see names of the unspecified columns
+#names(unspec_columns)[unspec_columns == "TRUE"]
+AGP_healthy_subset <- AGP_healthy_subset[, !unspec_columns]
+
+#Delete columns with uniform values (all values are the same)
+uniform_columns <- vapply(AGP_healthy_subset, function(x) length(unique(x)) == 1, logical(1L))
+# see names of the uniform columns
+#names(uniform_columns)[uniform_columns == "TRUE"]
+AGP_healthy_subset <- AGP_healthy_subset[, !uniform_columns]
+```
+
+Furthermore, we are not interested in examining effects of Covid or surfing on 
+gut microbiome so we are going to delete these columns:
+
+```{r}
+# Delete covid related columns
+cols <- grep("^covid?", names(AGP_healthy_subset), value=T)
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+
+# Delete columns related to surfing data
+cols <- grep("^surf_.?", names(AGP_healthy_subset), value=T)
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+```
+
+Delete other redundand columns:
+
+```{r}
+table(AGP_healthy_subset$host_age_units) ### all are in years or not applicable
+### host_age_normalized_years is the same as host_age, 
+### host_subject_id and anonymized_name - we already have sample identifiers 
+# (sample_name), we don't need subject ID since we don't need to identify subjects 
+### roommates_in_study - irrelevant since we can't identify them, 
+### toilet_water_access - irrelevant
+### collection_timestamp - irrelevant
+
+# Delete columns
+cols <- c('host_age_units', 'host_age_normalized_years', 'host_subject_id', 'roommates_in_study', 'toilet_water_access', 'anonymized_name', 'collection_timestamp')
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+
+ncol(AGP_healthy_subset)  #195
+
+colnames(AGP_healthy_subset)
+```
+
+We are left with `r ncol(AGP_healthy_subset)` columns relating to participants' 
+nutrition habits, allergies, physical activity, cohabitation etc.
+
+Check other columns of interest
+```{r}
+table(AGP_healthy_subset$sex)
+# cathegories: female, male, other, unspecified
+
+# Delete other and unspecified
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(sex=="female" | sex=="male")
+
+table(AGP_healthy_subset$bmi_cat)
+# cathegories: Normal, Overweight, Unspecified  
+
+# Delete Unspecified
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(bmi_cat !="Unspecified")
+```
+
+```{r}
+nrow(AGP)
+nrow(AGP_healthy_subset)
+```
+
+Export table into tsv format:
+
+```{r}
+#CSV
+
+write.csv(AGP, "~/Desktop/master_project/project_analysis/01_tidy_data/AGP_all.csv", row.names=FALSE)
+write.csv(AGP_healthy_subset, "~/Desktop/master_project/project_analysis/01_tidy_data/AGP_healthy.csv", row.names=FALSE)
+
+```
+
+# Disease data preprocessing
+
+### About datasets
+
+Following studies will be used as source of samples of different pathological conditions that affect alpha diversity:
+
+1. Multi-omics of the gut microbial ecosystem in inflammatory bowel diseases -> 177 samples, [dataset link](https://qiita.ucsd.edu/study/description/11484)
+2. Metaomics Reveals Microbiome Based Proteolysis as a Driver of Ulcerative Colitis Severity -> 96 samples, [dataset link](https://qiita.ucsd.edu/study/description/11549)
+3. Guiding longitudinal sampling in inflammatory bowel diseases cohorts -> ...samples , [dataset link](https://qiita.ucsd.edu/study/description/2538#)
+4. Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/10057)
+5. Dynamic changes in short- and long-term bacterial composition following fecal microbiota transplantation for recurrent Clostridium difficile infection -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/1924)
+
+All studies' data and metadata is available on Qiita platform.
+
+```{r}
+# Prepare metadata files
+
+# for study 1.
+IBD_meta_1 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_4068.tsv")  
+
+# for study 2.
+IBD_meta_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/sample_information_from_prep_8715.tsv") 
+
+# for study 3.
+CD_2a <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/sample_information_from_prep_569.tsv")
+
+# for study 4.
+trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/sample_information_transpl_CDI_IBD.txt")
+
+# for study 5.
+C_diff_tr <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/sample_information_from_prep_262.tsv")
+
+
+# change the name of second column in IBD_meta_1 so it matches colimn names n IBD_meta_2
+names(IBD_meta_1)[names(IBD_meta_1) == 'diagnosis'] <- 'condition'
+names(IBD_meta_2)[names(IBD_meta_2) == 'disease'] <- 'condition'
+names(trans_IBD_CDI)[names(trans_IBD_CDI) == 'pathology'] <- 'condition'
+
+```
+
+## IBD datasets (1. & 2.)
+
+```{r}
+ncol(IBD_meta_1)
+ncol(IBD_meta_2)
+ncol(trans_IBD_CDI)
+```
+\
+IBD_meta_1
+\
+Keep: sex, race, diagnosis,(probiotic, antibiotic, chemotherapy), consent_age, age_at_diagnosis
+\
+\
+IBD_meta_2
+\
+Keep: age, sex, race, disease, age_diagnosis
+\
+Filter for age: 20-69
+\
+\
+
+```{r}
+IBD_meta_1 <- select(IBD_meta_1, sample_id, sex, race, consent_age, age_at_diagnosis, condition, qiita_study_id)
+
+IBD_meta_2 <- select(IBD_meta_2, sample_id, sex, race, age, age_diagnosis, condition, qiita_study_id)
+
+names(IBD_meta_1)[names(IBD_meta_1) == 'consent_age'] <- 'age'
+names(IBD_meta_2)[names(IBD_meta_2) == 'age_diagnosis'] <- 'age_at_diagnosis'
+
+IBD_meta_1[IBD_meta_1 == "White"] <-'Caucasian'
+
+IBD_meta_2[IBD_meta_2 == "F"] <- 'female'
+IBD_meta_2[IBD_meta_2 == "M"] <- 'male'
+```
+
+```{r}
+# merge them in single dataframe
+IBD_meta_all <-  rbind(IBD_meta_1, IBD_meta_2)
+```
+
+```{r}
+# Filter for age: 20-69
+
+IBD_meta_all <- IBD_meta_all %>%
+  filter(age > 20 & age < 69)
+
+```
+
+```{r}
+# Load .tsv files from inflammatory bowel disease analysis
+shannon_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/shannon_IBD.tsv")
+chao1_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/chao1_IBD.tsv")
+fisher_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/fisher_IBD.tsv")
+margalef_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/margalef_IBD.tsv")
+simpson_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/simpson_IBD.tsv")
+gini_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/gini_IBD.tsv")
+menhinick_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/menhinick_IBD.tsv")
+strong_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/strong_IBD.tsv")
+faith_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/faith_IBD.tsv")
+pielou_IBD <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/02_inflammatory_bowel_disease/pielou_IBD.tsv")
+
+#simpson_IBD$inverse_simpson <- sapply(simpson_IBD$simpson, function(x) 1/x)
+
+names(faith_IBD)[names(faith_IBD) == 'X.SampleID'] <- 'X'
+
+#put all data frames into list
+all_IBD <- list(shannon_IBD, chao1_IBD, menhinick_IBD, margalef_IBD, fisher_IBD, gini_IBD, strong_IBD, simpson_IBD, faith_IBD, pielou_IBD) 
+
+#merge all data frames together
+all_IBD <- all_IBD %>% reduce(inner_join, by="X")
+
+names(all_IBD)[names(all_IBD) == 'X'] <- 'sample_id'
+
+all_IBD$sample_id <- str_replace(all_IBD$sample_id, "^.*?\\.", "")
+```
+
+```{r}
+nrow(all_IBD)
+```
+
+```{r}
+# match sample_id from table ... and IBD_meta_all and add disease status from 
+# table IBD_meta_all to corresponding sample
+
+all_IBD <- all_IBD %>% left_join(IBD_meta_all, by=c('sample_id' = 'sample_id'))
+
+all_IBD <- all_IBD[complete.cases(all_IBD),]
+```
+
+```{r}
+#export merged dataframe into .tsv file
+
+write.csv(all_IBD, "~/Desktop/master_project/project_analysis/01_tidy_data/IBD_all.csv", row.names=FALSE)
+```
+
+## Longitudinal Chron's disease study (3.)
+
+```{r}
+CD_2 <- select(CD_2a, sample_name, sex, age, description, sample_type, weeks, env_package, ibd, surgery_and_ibd, surgery_type, qiita_study_id)
+
+names(CD_2)[names(CD_2) == 'sample_name'] <- 'sample_id'
+names(CD_2)[names(CD_2) == 'ibd'] <- 'condition'
+
+
+# Load .tsv files from inflammatory bowel disease analysis
+shannon_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_shannon.tsv")
+chao1_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_chao1.tsv")
+fisher_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_fisher.tsv")
+margalef_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_margalef.tsv")
+simpson_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_simpson.tsv")
+gini_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_gini.tsv")
+menhinick_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_menhinick.tsv")
+strong_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_strong.tsv")
+faith_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_faith.tsv")
+pielou_CD_2 <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/05_chrons_disease_longitudinal/CD_2_pielou.tsv")
+
+#simpson_CD_2$inverse_simpson <- sapply(simpson_CD_2$simpson, function(x) 1/x)
+
+names(faith_CD_2)[names(faith_CD_2) == 'X.SampleID'] <- 'X'
+
+#put all data frames into list
+all_CD_2 <- list(shannon_CD_2, chao1_CD_2, fisher_CD_2, margalef_CD_2, gini_CD_2, menhinick_CD_2, strong_CD_2, simpson_CD_2, faith_CD_2, pielou_CD_2)
+
+#merge all data frames together
+all_CD_2 <- all_CD_2 %>% reduce(inner_join, by="X")
+
+names(all_CD_2)[names(all_CD_2) == 'X'] <- 'sample_id'
+
+# match sample_id from table ... and IBD_meta_all and add disease status from 
+# table IBD_meta_all to corresponding sample
+
+all_CD_2 <- all_CD_2 %>% left_join(CD_2, by=c('sample_id' = 'sample_id'))
+
+all_CD_2 <- all_CD_2[complete.cases(all_CD_2),]
+
+nrow(all_CD_2)
+```
+
+```{r}
+# Filter for age and BMI
+all_CD_2 <- all_CD_2 %>%
+  filter(age > 20 & age < 69)
+
+all_CD_2 <- all_CD_2 %>%
+  filter(sample_type == "feces")
+
+nrow(all_CD_2)
+
+table(all_CD_2$description, all_CD_2$condition)
+```
+
+```{r}
+#export merged dataframe into .tsv file
+
+write.csv(all_CD_2, "~/Desktop/master_project/project_analysis/01_tidy_data/all_CD_2.csv", row.names=FALSE)
+
+```
+
+## Fecal transplantation IBD and CDI dataset (4.)
+
+```{r}
+trans_IBD_CDI <- select(trans_IBD_CDI, sample_name, animations_subject, sex, age, body_mass_index, condition, day_since_fmt, donor_or_patient, number_recurrence_after_fmt, qiita_study_id)
+
+names(trans_IBD_CDI)[names(trans_IBD_CDI) == 'sample_name'] <- 'sample_id'
+
+trans_IBD_CDI[trans_IBD_CDI == "Crohn's"] <-'CDI + CD'
+trans_IBD_CDI[trans_IBD_CDI == "microscopic colitis"] <-'CDI + MC'
+trans_IBD_CDI[trans_IBD_CDI == "Ulcerative colitis"] <-'CDI + UC'
+trans_IBD_CDI[trans_IBD_CDI == "no IBD"] <-'CDI'
+
+# Load .tsv files from inflammatory bowel disease analysis
+shannon_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_shannon.tsv")
+chao1_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_chao1.tsv")
+fisher_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_fisher.tsv")
+margalef_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_margalef.tsv")
+simpson_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_simpson.tsv")
+gini_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_gini.tsv")
+menhinick_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_menhinick.tsv")
+strong_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_strong.tsv")
+faith_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_faith.tsv")
+pielou_trans_IBD_CDI <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/03_fecal_transpl_CDI_and_IBD/tr_IBD_CDI_pielou.tsv")
+
+#simpson_trans_IBD_CDI$inverse_simpson <- sapply(simpson_trans_IBD_CDI$simpson, function(x) 1/x)
+
+names(faith_trans_IBD_CDI)[names(faith_trans_IBD_CDI) == 'X.SampleID'] <- 'X'
+
+#put all data frames into list
+all_trans_IBD_CDI <- list(shannon_trans_IBD_CDI, chao1_trans_IBD_CDI, fisher_trans_IBD_CDI, margalef_trans_IBD_CDI, gini_trans_IBD_CDI, menhinick_trans_IBD_CDI, strong_trans_IBD_CDI, simpson_trans_IBD_CDI, faith_trans_IBD_CDI, pielou_trans_IBD_CDI) 
+
+#merge all data frames together
+all_trans_IBD_CDI <- all_trans_IBD_CDI %>% reduce(inner_join, by="X")
+
+names(all_trans_IBD_CDI)[names(all_trans_IBD_CDI) == 'X'] <- 'sample_id'
+
+# match sample_id from table ... and IBD_meta_all and add disease status from 
+# table IBD_meta_all to corresponding sample
+
+all_trans_IBD_CDI <- all_trans_IBD_CDI %>% left_join(trans_IBD_CDI, by=c('sample_id' = 'sample_id'))
+
+all_trans_IBD_CDI <- all_trans_IBD_CDI[complete.cases(all_trans_IBD_CDI),]
+
+nrow(all_trans_IBD_CDI)
+```
+
+```{r}
+# Filter for age and BMI
+
+all_trans_IBD_CDI <- all_trans_IBD_CDI %>%
+  filter(age > 20 & age < 69)
+
+all_trans_IBD_CDI_donors <- all_trans_IBD_CDI %>%
+  filter(animations_subject == "Donors (CD and IBD)")
+
+all_trans_IBD_CDI <- all_trans_IBD_CDI %>%
+   filter(body_mass_index > 18.5 &
+          body_mass_index < 30)
+
+all_trans_IBD_CDI <- rbind(all_trans_IBD_CDI, all_trans_IBD_CDI_donors)
+
+nrow(all_trans_IBD_CDI)
+```
+
+```{r}
+#export merged dataframe into .tsv file
+
+write.csv(all_trans_IBD_CDI, "~/Desktop/master_project/project_analysis/01_tidy_data/all_trans_IBD_CDI.csv", row.names=FALSE)
+```
+
+# Changes following fecal microbial transplantation for recurrent CDI (5.)
+
+```{r}
+C_diff_trans <- select(C_diff_tr, sample_name, animations_subject, sex, race, host_age, host_body_mass_index, day_relative_to_fmt, disease_state, qiita_study_id)
+
+names(C_diff_trans)[names(C_diff_trans) == 'sample_name'] <- 'sample_id'
+names(C_diff_trans)[names(C_diff_trans) == 'host_age'] <- 'age'
+names(C_diff_trans)[names(C_diff_trans) == 'host_body_mass_index'] <- 'body_mass_index'
+names(C_diff_trans)[names(C_diff_trans) == 'day_relative_to_fmt'] <- 'day_since_fmt'
+
+
+# Load .tsv files from inflammatory bowel disease analysis
+shannon_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_shannon.tsv")
+chao1_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_chao1.tsv")
+fisher_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_fisher.tsv")
+margalef_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_margalef.tsv")
+simpson_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_simpson.tsv")
+gini_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_gini.tsv")
+menhinick_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_menhinick.tsv")
+strong_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_strong.tsv")
+pielou_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_pielou.tsv")
+faith_C_diff_trans <- read.delim("~/Desktop/master_project/project_analysis/00_raw_data/04_C_difficile/cdiff_faith.tsv")
+
+names(faith_C_diff_trans)[names(faith_C_diff_trans) == 'X.SampleID'] <- 'X'
+
+#simpson_C_diff_trans$inverse_simpson <- sapply(simpson_C_diff_trans$simpson, function(x) 1/x)
+
+#put all data frames into list
+all_C_diff_trans <- list(shannon_C_diff_trans, chao1_C_diff_trans, fisher_C_diff_trans, margalef_C_diff_trans, gini_C_diff_trans, menhinick_C_diff_trans, strong_C_diff_trans, faith_C_diff_trans, simpson_C_diff_trans, pielou_C_diff_trans)   
+
+#merge all data frames together
+all_C_diff_trans <- all_C_diff_trans %>% reduce(inner_join, by="X")
+
+names(all_C_diff_trans)[names(all_C_diff_trans) == 'X'] <- 'sample_id'
+
+#join C_diff_trans metadata with alpha metrics
+
+all_C_diff_trans <- all_C_diff_trans %>% left_join(C_diff_trans, by=c('sample_id' = 'sample_id'))
+
+#keep only complete cases
+
+all_C_diff_trans <- all_C_diff_trans[complete.cases(all_C_diff_trans),]
+
+nrow(all_C_diff_trans)
+```
+
+```{r}
+# Filter for age and BMI
+
+all_C_diff_trans <- all_C_diff_trans %>%
+  filter(age > 20 & age < 69)
+
+all_C_diff_trans <- all_C_diff_trans %>%
+   filter(body_mass_index > 18.5 &
+          body_mass_index < 30)
+
+all_C_diff_trans <- all_C_diff_trans %>%
+  filter(animations_subject != "Patient")
+
+nrow(all_C_diff_trans)
+```
+
+```{r}
+#export merged dataframe into .tsv file
+
+write.csv(all_C_diff_trans, "~/Desktop/master_project/project_analysis/01_tidy_data/all_C_diff_trans.csv", row.names=FALSE)
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References
