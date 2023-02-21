@@ -52,8 +52,6 @@ AGP <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_ti
 # Load healthy samples' table
 all_healthy <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz", header = TRUE, sep = ",")    
 
-#all_healthy <- all_healthy[1:10]
-
 all_healthy <- select(all_healthy, sample_id, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, pielou_evenness, gini_index, strong, simpson, faith_pd, sex, race, host_age)
 
 
@@ -68,7 +66,6 @@ Load data for *Inflammatory Bowel Disease* data sets
 
 ```{r}
 all_IBD <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/IBD_all.csv.gz", header = TRUE, sep = ",")  
-
 ```
 
 Load data for *Fecal transplant - CDI with underlying IBD* data set
@@ -162,8 +159,6 @@ Density plots and  Box plots
 ```{r}
 density <- vector('list', length(metric))
 box <- vector('list', length(metric))
-
-
 
 for (i in 1:length(metric)){
   mean_line <- healthy_disease %>% dplyr::group_by(condition) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
@@ -346,7 +341,6 @@ table(CD_2$description, CD_2$condition)
 table(CD_2$condition)
 
 table(CD_2$surgery_and_ibd)
-
 ```
 
 ```{r}
@@ -368,7 +362,6 @@ for (i in 1:length(metric)){
        scale_x_continuous(trans = 'log10') +
        xlab(paste(metric[i], "(log10)", sep = " ")) 
     }
-
 }
 
 #plots for Shannon entropy
@@ -396,7 +389,6 @@ for (i in 1:length(metric)){
        scale_x_continuous(trans = 'log10') +
        xlab(paste(metric[i], "(log10)", sep = " ")) 
     }
-
 }
 
 #plots for Shannon entropy
@@ -423,7 +415,6 @@ for (i in 1:length(metric)){
        scale_x_continuous(trans = 'log10') +
        xlab(paste(metric[i], "(log10)", sep = " ")) 
     }
-
 }
 
 #plots for Shannon entropy
@@ -447,7 +438,6 @@ CD_check$condition[CD_check$condition == "crohns"] <-'CD_2'
 CD_check$condition[CD_check$condition == "crohns (surgery)"] <-'CD_2_surgery'
 CD_check$condition[CD_check$condition == "healthy"] <-'control(AGP)'
 CD_check$condition[CD_check$condition == "control"] <-'control_2'
-
 ```
 
 ```{r}
@@ -474,7 +464,6 @@ for (i in 1:length(metric)){
 
 #plots for Shannon entropy
 violin_CD_check 
-
 ```
 
 ```{r}
@@ -493,7 +482,6 @@ for (i in 1:length(metric)){
 
 tests1 <- do.call(what = rbind, args = test_CD_1)
 tests2 <- do.call(what = rbind, args = test_CD_2)
-
 
 table_CD_1 <- tests1 %>% 
   add_column(p.adjusted = p.adjust(tests1$p.value, "fdr"), .after='p.value') %>%
@@ -556,6 +544,7 @@ From the paper: "A recent study suggests significantly lower response of CDI to 
 ```{r}
 colnames(trans_IBD_CDI)
 ```
+
 ```{r}
 table(trans_IBD_CDI$condition)
 table(trans_IBD_CDI$day_since_fmt)
@@ -638,12 +627,10 @@ C_diff_trans$animations_subject[C_diff_trans$animations_subject == "CD4"] <-'sub
 progression <- vector('list', length(metric))
 
 for (i in 1:length(metric)){
-  
   progression[[i]] <- C_diff_trans %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], group=animations_subject)) +
     geom_line(aes(color=animations_subject))+
     geom_point(aes(color=animations_subject))+
     facet_wrap(vars(animations_subject), scale="free", ncol=2)
-  
 }
 
 progression
@@ -702,7 +689,6 @@ for (i in 1:length(metric)){
 
 #plots for Shannon entropy
 violin_all
-
 ```
 
 ## Mann-Whitney-Wilcoxon Test
@@ -806,7 +792,6 @@ for (i in 1:length(metric)){
 
 #plots for Shannon entropy
 violin_all_b
-
 ```
 
 # Session information

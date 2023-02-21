@@ -188,7 +188,7 @@ tabs[[x]] <- subsets[[x]] %>%
 
 # Extract minimums, means and maximums of each metric and combine them in new tables
 cols <- c("column", "mean", "min", "max")
-metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" ) 
+metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" )
 alpha_tables <- list()
 
 for (i in 1:length(metric)){
@@ -208,21 +208,27 @@ for(x in 1:length(alpha_tables)){
 
 ```{r}
 # Plot values of min, mean and max for each subset of AGP data
-
 all_alpha_tables %>%
   ggplot(aes(x= min, y=subsample)) + 
   geom_dotplot(binaxis='y', stackdir='center') +
-  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5)
 
 all_alpha_tables %>%
   ggplot(aes(x= mean, y=subsample)) + 
   geom_dotplot(binaxis='y', stackdir='center') +
-  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5)
 
 all_alpha_tables %>%
   ggplot(aes(x= max, y=subsample)) + 
   geom_dotplot(binaxis='y', stackdir='center') +
-  facet_wrap(column ~ ., scales = "free_x", ncol=3)
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5) 
+
 ```
 
 Group of healthy AGP participants without any reported disease has the highest 

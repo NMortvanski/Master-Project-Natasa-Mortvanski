@@ -1,20 +1,8 @@
----
-title: "Characterisation of healthy samples from American Gut Project"
-author:
-- name: "Natasa Mortvanski"
-  affiliation: Universitat Pompeu Fabra
-  email: natasa.mortvanski01@estudiant.upf.edu
-date: "`r Sys.Date()`"
-output: html_document
----
-
-```{r setup,  include=FALSE}
+## ----setup,  include=FALSE-----------------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-Loading libraries:
 
-```{r, message=FALSE}
+## ---- message=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
@@ -30,54 +18,50 @@ library(nortest)
 library(PerformanceAnalytics)
 library(corrplot)
 library(RColorBrewer)
-```
 
-Load data: 
 
-```{r}
-AGP <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_all.csv.gz", header = TRUE, sep = ",")  
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
+AGP <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_all.csv.gz", header = TRUE, sep = ",")
 
-all_healthy <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz", header = TRUE, sep = ",")  
+all_healthy <- read.csv("~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/AGP_healthy.csv.gz", header = TRUE, sep = ",")
 
 nrow(AGP)
 nrow(all_healthy)
-```
 
-## Plots
 
-### Distributions of diversity metrics (histograms)
+## ---- include=FALSE------------------------------------------------------------------------------------------------------------------------------------------
+# easy function for cross tabulating and plotting two variables
 
-Let's define vector of names of the alpha diversity metrics that are going to be analysed:
+#install.packages("CGPfunctions")
+library(CGPfunctions)
 
-```{r}
-metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" ) 
-```
+PlotXTabs(all_healthy, race, country_residence)
 
-Generate a vector of 10 random colors for histograms:
 
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
+metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" )
+
+
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
 colors <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-```
 
-```{r}
+
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 histo <- vector('list', length(metric))
 
 for (i in 1:length(metric)){
   histo[[i]] <- all_healthy %>% ggplot(aes(x = .data[[metric[i]]])) +
     geom_histogram(aes(y=..density..), colour="black", fill="white", bins=30)+
     geom_density(alpha=.2, fill=colors[i]) +
-    xlab(label = metric[i]) + 
+    xlab(label = metric[i]) +
     ylab(label = "density")
 }
 
 grid.arrange(histo[[1]], histo[[2]],histo[[3]], histo[[4]],histo[[5]], histo[[6]],histo[[7]], histo[[8]],histo[[9]], histo[[10]], ncol=3, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in healthy dataset", gp=gpar(fontsize=10,font=2)))
-```
 
 
-## Checking normality of the data (Kolmogorov-Smirnov Test)
-
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 pval_ks <- list()
 stat_ks <- list()
 
@@ -91,11 +75,9 @@ pval_ks <- unlist(pval_ks)
 
 data.frame(metric=metric, statistic=stat_ks, p.value=pval_ks) %>% flextable() %>%
     add_header_lines(values = "Results of the Kolmogorov-Smirnov Test of distribution normality")
-```
 
-Anderson-Darling Test in R (Quick Normality Check)
 
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 pval_ad <- list()
 stat_ad <- list()
 
@@ -109,39 +91,30 @@ pval_ad <- unlist(pval_ad)
 
 data.frame(metric=metric, statistic=stat_ad, p.value=pval_ad) %>% flextable() %>%
     add_header_lines(values = "Results of the Anderson-Darling Test of distribution normality")
-```
 
-Closest to normal distribution:
-faith_pd -> p-value: 0.0724
-margalef -> p-value: 0.1575
-menhinick -> p-value: 0.1575
 
-## Correlations
+## ---- include=FALSE------------------------------------------------------------------------------------------------------------------------------------------
+#str(all_healthy)
 
-Most of the variables are categorical.
 
-### Explore correlations of numerical variables with alhpa metrics
-
-First lets check corelations between alpha diversity metrics
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 library(corrplot)
 
 metrics <- all_healthy[,2:11]
+#metrics <- all_healthy[,2:9]
 cor_matrix <- cor(metrics)
 
-corrplot(cor_matrix, type = "upper", order = "hclust", 
+corrplot(cor_matrix, type = "upper", order = "hclust",
          tl.col = "black", tl.srt = 45)
-```
 
-```{r}
+
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 chart.Correlation(all_healthy[, 2:11], histogram=TRUE, pch=19)
-```
 
-For numerical variables we can perform simple Pearson's correlation coefficient:
 
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Identify numeric columns
-num_cols <- unlist(lapply(all_healthy, is.numeric)) 
+num_cols <- unlist(lapply(all_healthy, is.numeric))
 
 # Subset numeric columns of data
 data_num <- all_healthy[ , num_cols]
@@ -151,45 +124,23 @@ data_num$birth_year <- NULL
 correlation_num <- as.data.frame(cor(data_num[-c(11:14)], data_num[-c(1:10)]))
 correlation_num %>% tibble::rownames_to_column() %>% flextable()
 
-# Plot correlation 
+# Plot correlation
 cor_matrix <- cor(data_num[-c(1:10)], data_num[-c(11:14)])
 
 corrplot(cor_matrix, tl.col = "black", tl.srt = 45)
-```
 
-### Explore correlations of categorical variables with alpha metrics
 
-We can use linear regression models. From a simple regression model, we can derive the coefficient of determination. 
-
-For a simple case, where continuous dependent variable is Y and there is just one continuous variable X, the numeric value of the r-squared is equal to the square of the correlation of X and Y.
-
-Now if we have one continuous variable and one categorical variable, it is impossible to calculate the correlation between them. However, we can use regression to come up with a numeric value that can be treated similarly as correlation. For that, we need to make a regression model taking the continuous variable as dependent variable and categorical variable as independent variable. The model gives a r-sq value. We need to take the square root of that r-sq value.
-
-source: [source link](https://rpubs.com/riazakhan94/correlation_between_categorical_and_continuous_variable , "Source link")
-
-We can use linear regression which is used when the dependent variable is continuous. The predictors can be anything (nominal or ordinal categorical, or continuous, or a mix). 
-
-source: [source link](https://stats.stackexchange.com/questions/267121/regression-for-categorical-independent-variables-and-a-continuous-dependent-one , "Source link")
-
-As a result of building a linear model we get multiple R: The multiple correlation coefficient between three or more variables.
-Multiple R-Squared: This is calculated as (Multiple R)2 and it represents the *proportion of the variance in the response variable of a regression model that can be explained by the predictor variables*. This value ranges from 0 to 1.
-
-source: [source link](https://www.statology.org/multiple-r-vs-r-squared/ , "Source link")
-
-More info about the interpretation:
-source: [source link](https://www.statology.org/r-linear-regression-with-categorical-variables/, "Source link")
-
-```{r, message=FALSE}
+## ---- message=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 # Extract categorical variables from all_healthy data frame
 
-cat_cols <- unlist(lapply(all_healthy, is.character)) 
+cat_cols <- unlist(lapply(all_healthy, is.character))
 
 # Subset numeric columns of data
 data_cat <- all_healthy[ , cat_cols]
 data_cat$sample_id <- NULL
-```
 
-```{r, message=FALSE}
+
+## ---- message=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 # Calculate regression coefficient for all categorical variables in relation to all alpha diversity metrics
 
 correlation_cat <- data.frame(variable=character(0))
@@ -220,9 +171,11 @@ sumryXY
 ## r-sq of model
 rsqXY <- sumryXY$r.squared
 rsqXY
-```
 
-```{r, message=FALSE}
+#print(rsqXY)
+
+
+## ---- message=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 # Extract first 10 variables with the biggest influence on alpha metrics
 
 most_correlated <- data.frame(variable=character(20),regression_coefficient=numeric(20))
@@ -236,9 +189,9 @@ for (j in 2:11){
 }
 
 most_correlated[,1:2] <- NULL
-```
 
-```{r}
+
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 ### Plot "correlations" of categorical variables
 
 # Transform correlation_cat data frame to matrix
@@ -251,12 +204,9 @@ dat <- dat[order(dat[,1], decreasing=TRUE),]
 
 # Plot the "correlation" matrix
 corrplot(dat[1:20,], tl.col = "black", tl.srt = 45)
-```
 
 
-# How to compare different meta-data categories in the light of alpha diversity?
-
-```{r, include=FALSE}
+## ---- include=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 #mu_shannon <- ddply(all_healthy, "sex", summarise, grp_mean_shannon = mean(shannon_entropy))
 
 #shannon_density <- ggplot(all_healthy, aes(x=shannon_entropy, color=race)) +
@@ -270,166 +220,95 @@ corrplot(dat[1:20,], tl.col = "black", tl.srt = 45)
 # labs(x ="Shannon's index")
 
 #plot_grid(shannon_density, plot_shannon_box, nrow = 2)
-```
 
-1) Density plots and  Box plots -> in the Density_Box_App
 
-```{r, include=FALSE}
+## ---- include=FALSE------------------------------------------------------------------------------------------------------------------------------------------
 # library(RColorBrewer)
-# 
+#
 # compare <- c("sex", "age_cat",  "race", "bowel_movement_quality","milk_cheese_frequency", "bmi_cat")
-# 
+#
 # metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "inverse_simpson", "fisher_alpha", "gini_index", "strong" , "faith_pd")
-# 
+#
 # density <- vector('list', length(compare)*length(metric))
 # box <- vector('list', length(compare)*length(metric))
-# 
-# 
+#
+#
 # for (j in 1:length(compare)){
 #   for (i in 1:length(metric)){
 #     mean_line <- all_healthy %>% dplyr::group_by(.data[[compare[j]]]) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
-# 
+#
 #     density[[j]][[i]] <- all_healthy %>% ggplot(aes(x = .data[[metric[i]]], color = .data[[compare[j]]])) +
 #       geom_density()+
 #       geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[compare[j]]]), linetype = "dashed")+
 #       #scale_x_continuous(trans = 'log10') +
 #       labs(x = metric[i])
-# 
+#
 #     box[[j]][[i]] <- all_healthy %>% ggplot(aes(x = .data[[metric[i]]], color = .data[[compare[j]]])) +
 #       geom_boxplot() +
 #       #scale_x_continuous(trans = 'log10') +
 #       labs(x = metric[i])
 #   }
 # }
-# 
+#
 # #plots for Shannon entropy
 # for (j in 1:length(compare)){
 #   #grid.arrange(density[[j]][[1]], box[[j]][[1]], ncol=2, top = textGrob("Distribution of ...", gp=gpar(fontsize=10,font=2)))
 #   plot(density[[j]][[2]])
 #   plot(box[[j]][[2]])
 # }
-# 
-# 
+#
+#
 # # With facet wrap
-# 
+#
 # mean_line <- all_healthy %>% dplyr::group_by(bowel_movement_quality) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
-# 
+#
 # density_test <- all_healthy %>% ggplot(aes(x = shannon_entropy, color = bowel_movement_quality)) +
 #   geom_density()+
 #   geom_vline(data = mean_line, aes(xintercept = grp_mean, color = bowel_movement_quality), linetype = "dashed")+
 #   #scale_x_continuous(trans = 'log10') +
 #   labs(x = "shannon_entropy") +
 #   facet_wrap(vars(sex), nrow = all_healthy %>% group_by(bowel_movement_quality) %>% summarise() %>% nrow)
-# 
+#
 # box_test<- all_healthy %>% ggplot(aes(x = shannon_entropy, color = bowel_movement_quality)) +
 #   geom_boxplot() +
 #   #scale_x_continuous(trans = 'log10') +
 #   labs(x = "shannon_entropy") +
 #   facet_wrap(vars(sex), nrow = all_healthy %>% group_by(bowel_movement_quality) %>% summarise() %>% nrow)
-# 
+#
 # box_test
 # density_test
-# 
+#
 # length(table(all_healthy$bowel_movement_quality))
-# 
+#
 # all_healthy %>% group_by(bowel_movement_quality) %>% summarise() %>% nrow
-```
-\
-\
-\
-Interesting:
-\
-- (+++!) bmi_cat - significant for all of the alpha metrics (Overweight < Normal)\
-\
-- (+++!) milk_cheese_frequency - significant for all of the alpha metrics (rarely < frequently)\
-                              \
-- (?)(+++!) specialized_diet_exclude_dairy - significant for all alpha except Strong (true < false)\
-                                           - true(41), false(810)\
-\
-- (?)(+++) plant_protein_frequency - significant for all alpha (Daily <<)\
-                                   - does it make sense?\
-\
-- (++) salted_snacks_frequency - significant for all alpha except for Simpson and Strong (frequent < rarely)\
-\
-- (++) fermented_plant_frequency - significant for all alpha except for chao1 (Daily <<)\
-                                 - Daily(30), others(812)\
-\
-- (++) bowel_movement_quality - significant for all alpha except for Shannon and Strong (but they are on the margin of 0.05 sig lvl)\
-                              - diarrhea(73) < normal(711), diarrhea(73) < constipation(54)\
-\
-- (?)(++) race - significant for all metrics:\
-          - Asian < Hispanic (all)\
-          - Caucasian < Hispanic (all)\
-          - Asian < Caucasian (all except Shannon, Simpson and Strong)\
-          \
-- (?)(++) non_food_allergies_poison_ivyoak - significant for all alpha except for Simpson and Strong (true(62) < false(789))\
-\
-- (?)(++) frozen_dessert_frequency - significant for all metrics except Chao1 and Simpson (Occasionally < Rarely)\
-                                   - does it make sense?\
-                          \
-- (?)(+) prepared_meals_frequency  - significant for Shannon, Simpson, Gini and Strong (Daily(13) < Never/Rarely)\
-\
-- (?)(+) seafood_frequency - significant for Chao1, Menhinick, Margalef and Fisher (Rarely < Occasionally)\
-                           - does it make sense?\
-\
-- (?)(+) non_food_alergies_unspecified - significant for Chao1, Menhinick, Margalef and Fisher (false < true)\
-\
-- other_supplement_frequency - significant for Shannon, Simpson and Strong (Yes < No)\
-\
-- sex - significant for Shannon, Simpson (m < f) and Gini (f < m)\
-\
-- age_cat - significant for Simpson and Strong (20 vs 40)\
-          - others not significant after adjustment\
-\
-- (?) specialized_diet_exclude_refined_sugars - significant for Shannon and Simpson (true(54) < false(797))\
-\
 
-- (??) flossing_frequency - signifficant for Shannon, Simpson, Gini and Strong (never <<)\
-\
-- (??) probiotic_frequency - signifficant for Simpson (Daily < Never??)\
-                           - on the margin for Strong\
-          \
-- pool_frequency - Daily > others for all metrics\
-                 - only 6 samples in Daily group with high alpha\s
-\
-\
-\
-                 
-IMPORTANT:
-bmi, diary products consumption, race, bowel_movement_quality
-\
-\
-Check if two groups belong to the same distribution -> in the Density_Box_App
 
-```{r,  include=FALSE}
+## ----  include=FALSE-----------------------------------------------------------------------------------------------------------------------------------------
 # compare <- c("sex", "age_cat", "race")
 # metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "inverse_simpson", "fisher_alpha", "gini_index", "strong", "faith_pd" )
 # test <- list()
 # tables <- list()
-# 
+#
 # for (j in 1:length(compare)){
 #   for (i in 1:length(metric)){
-#     test[[i]] <- pairwise.wilcox.test(all_healthy[[metric[i]]], all_healthy[[compare[j]]], p.adjust.method="none") %>% 
+#     test[[i]] <- pairwise.wilcox.test(all_healthy[[metric[i]]], all_healthy[[compare[j]]], p.adjust.method="none") %>%
 #     broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
 #   }
-#   
+#
 #   tables[[j]] <- do.call(what = rbind, args = test)
-#   
-#   tables[[j]] <- tables[[j]] %>% 
+#
+#   tables[[j]] <- tables[[j]] %>%
 #     add_column(p.adjusted = p.adjust(tables[[j]]$p.value, "fdr"), .after='p.value') %>%
-#     flextable() %>% 
+#     flextable() %>%
 #     bold(~ p.value < 0.05, 4) %>%
 #     bold(~ p.adjusted < 0.05, 5) %>%
 #     add_header_lines(values = "Results of the Wilcox test for distributions of different groups")
 # }
-# 
+#
 # tables
-```
 
 
-### Plots for country of birth and residence
-
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 library(stringr)
 
 cols <- c("sample_id", "shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "gini_index", "pielou_evenness" , "simpson", "strong", "faith_pd","country_of_birth", "country_residence" )  ##"inverse_simpson"
@@ -465,9 +344,9 @@ healthy_countries_2 <- healthy_countries[!(healthy_countries$country_of_birth=="
 
 table(healthy_countries_2$country_of_birth)
 table(healthy_countries_2$country_residence)
-```
 
-```{r, echo = FALSE}
+
+## ---- echo = FALSE-------------------------------------------------------------------------------------------------------------------------------------------
 compare <- c("country_of_birth", "country_residence")
 
 density <- vector('list', length(compare)*length(metric))
@@ -478,10 +357,10 @@ for (j in 1:length(compare)){
   for (i in 1:length(metric)){
     mean_line <- healthy_countries_2 %>% dplyr::group_by(.data[[compare[j]]]) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
     #print(mean_line)
-    
+
     density[[j]][[i]] <- healthy_countries_2 %>% ggplot(aes(x = .data[[metric[i]]], color = .data[[compare[j]]])) +
       geom_density()+
-      geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[compare[j]]]), linetype = "dashed")+ 
+      geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[compare[j]]]), linetype = "dashed")+
       #scale_x_continuous(trans = 'log10') +
       labs(x = metric[i])
 
@@ -503,34 +382,32 @@ for (j in 1:length(metric)){
   plot(density[[2]][[j]])
   plot(box[[2]][[j]])
 }
-```
 
-```{r}
+
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 test <- list()
 tables <- list()
 
 for (j in 1:length(compare)){
   for (i in 1:length(metric)){
-    test[[i]] <- pairwise.wilcox.test(healthy_countries_2[[metric[i]]], healthy_countries_2[[compare[j]]], p.adjust.method="none") %>% 
+    test[[i]] <- pairwise.wilcox.test(healthy_countries_2[[metric[i]]], healthy_countries_2[[compare[j]]], p.adjust.method="none") %>%
     broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
   }
-  
+
   tables[[j]] <- do.call(what = rbind, args = test)
-  
-  tables[[j]] <- tables[[j]] %>% 
-    add_column(p.adjusted = p.adjust(tables[[j]]$p.value, "fdr"), .after='p.value') %>% 
+
+  tables[[j]] <- tables[[j]] %>%
+    add_column(p.adjusted = p.adjust(tables[[j]]$p.value, "fdr"), .after='p.value') %>%
     arrange(p.value)  %>%
-    flextable() %>% 
+    flextable() %>%
     bold(~ p.value < 0.05, 4) %>%
     bold(~ p.adjusted < 0.05, 5) %>%
     add_header_lines(values = "Results of the Wilcox test for distributions of different groups")
 }
 
 tables
-```
 
-# Session information
 
-```{r}
+## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 sessionInfo()
-```
+
