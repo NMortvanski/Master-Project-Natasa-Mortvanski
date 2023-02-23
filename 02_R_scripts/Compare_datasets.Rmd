@@ -88,6 +88,52 @@ Let's define vector of names of the alpha diversity metrics that are going to be
 metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" ) 
 ```
 
+Let's define function for plotting violin plots that we are going to use in the whole analysis:
+
+```{r}
+plot_violin <- function(df, column){
+  violin <- vector('list', length(metric))
+  
+  for (i in 1:length(metric)){
+    mean_line <- df %>% dplyr::group_by(.data[[column]]) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
+    plot_data <- df %>% dplyr::group_by(.data[[column]]) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+  
+    violin[[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(.data[[column]], -m), color = .data[[column]], fill = .data[[column]])) +
+      geom_violin()+
+      geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+      geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[column]]), linetype = "dashed")+ 
+      labs(x = metric[i])+
+      ylab("")+
+      theme(legend.position="none") 
+    
+    if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
+     violin[[i]] <- violin[[i]] + 
+       scale_x_continuous(trans = 'log10') +
+       xlab(paste(metric[i], "(log10)", sep = " ")) 
+    }
+  }
+  return(violin)
+}
+```
+
+Function for doing Mann-Whitney-Wilcoxon test:
+
+```{r}
+do_wilcox_test <- function(df, column){
+  test <- list()
+  
+  for (i in 1:length(metric)){
+    test[[i]] <- pairwise.wilcox.test(df[[metric[i]]], df[[column]], p.adjust.method="none") %>% 
+    broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
+    test[[i]]$p.value <- round(test[[i]]$p.value, digits = 17)
+  }
+  
+  tests <- do.call(what = rbind, args = test)
+  
+  return(tests)
+}
+```
+
 
 ## Healthy samples vs IBD samples
 
@@ -178,37 +224,15 @@ for (j in 1:length(metric)){
 }
 ```
 
-Explore differences in distribution shape and mean values of groups with different conditions by ploting violin plot:
+Explore differences in distribution shape and mean values of groups with different conditions by ploting violin plot.
 
 ```{r}
-violin <- vector('list', length(metric))
+violin_IBD <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- healthy_disease %>% dplyr::group_by(condition) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
-  plot_data <- healthy_disease %>% dplyr::group_by(condition) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+# Use violin function
+violin_IBD <- plot_violin(healthy_disease, "condition")
 
-  violin[[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(condition, -m), color = condition, fill = condition)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = condition), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("")+
-    #ggtitle("A Violin plot of distributions of alpha metrics in different conditions")+
-    theme(legend.position="none") 
-  
-  if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-   violin [[i]] <- violin [[i]] + 
-     scale_x_continuous(trans = 'log10') +
-     xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
-}
-
-# Show plots
-
-#violin
-
-grid.arrange(violin[[1]], violin[[2]],violin[[3]], violin[[4]],violin[[5]], violin[[6]],violin[[7]], violin[[8]],violin[[9]], violin[[10]], ncol=4, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in IBD datasets", gp=gpar(fontsize=10,font=2))) 
-
+grid.arrange(violin_IBD[[1]], violin_IBD[[2]],violin_IBD[[3]], violin_IBD[[4]],violin_IBD[[5]], violin_IBD[[6]],violin_IBD[[7]], violin_IBD[[8]],violin_IBD[[9]], violin_IBD[[10]], ncol=4, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in IBD datasets", gp=gpar(fontsize=10,font=2))) 
 ```
 
 ### Mann-Whitney-Wilcoxon Test
@@ -216,24 +240,18 @@ grid.arrange(violin[[1]], violin[[2]],violin[[3]], violin[[4]],violin[[5]], viol
 Test whether different conditions separate into distinct distributions with Mann-Whitney-Wilcoxon test:
 
 ```{r}
-test_helathy_IBD <- list()
+tests_IBD <- list()
 
-for (i in 1:length(metric)){
-  test_helathy_IBD[[i]] <- pairwise.wilcox.test(healthy_disease[[metric[i]]], healthy_disease$condition, p.adjust.method="none") %>% 
-  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test_helathy_IBD[[i]]$p.value <- round(test_helathy_IBD[[i]]$p.value, digits = 17)
-}
+tests_IBD <- do_wilcox_test(healthy_disease, "condition")
 
-tests <- do.call(what = rbind, args = test_helathy_IBD)
-
-table1 <- tests %>% 
+table1 <- tests_IBD %>% 
   add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different conditions")
 
-table2 <- tests %>% 
+table2 <- tests_IBD %>% 
   add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   flextable() %>% 
@@ -337,83 +355,35 @@ Lets do Violin plot to see the difference in alpha diversity between cases and c
 ```{r}
 violin_CD_2a <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- CD_2 %>% dplyr::group_by(condition) %>% dplyr::summarise(grp_mean = mean(.data[[metric[i]]]))
+# Use violin function
+violin_CD_2a <- plot_violin(CD_2, "condition")
 
-  violin_CD_2a [[i]] <- CD_2 %>% ggplot(aes(x = .data[[metric[i]]], y = condition, color = condition, fill = condition)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = condition), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("") +
-    theme(legend.position="none") 
-  
-    if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_CD_2a [[i]] <- violin_CD_2a [[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-    }
-}
-
-#plots for Shannon entropy
-violin_CD_2a 
-
-grid.arrange(violin_CD_2a[[1]], violin_CD_2a[[2]],violin_CD_2a[[3]], violin_CD_2a[[4]],violin_CD_2a[[5]], violin_CD_2a[[6]],violin_CD_2a[[7]], violin_CD_2a[[8]],violin_CD_2a[[9]],violin_CD_2a[[10]], ncol=4, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in IBD datasets", gp=gpar(fontsize=10,font=2)))
-``` 
+grid.arrange(violin_CD_2a[[1]], violin_CD_2a[[2]], violin_CD_2a[[3]], violin_CD_2a[[4]], violin_CD_2a[[5]], violin_CD_2a[[6]], violin_CD_2a[[7]],  violin_CD_2a[[9]], violin_CD_2a[[10]], ncol=4, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in longitudinal CD datasets", gp=gpar(fontsize=10,font=2))) 
+```
 
 Lets now compare alpha diversity between cases and controls but taking into account if they underwent surgery: 
 
 ```{r}
 violin_CD_2b <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- CD_2 %>% dplyr::group_by(surgery_and_ibd) %>% dplyr::summarise(grp_mean = mean(.data[[metric[i]]]))
+# Use violin function
+violin_CD_2b <- plot_violin(CD_2, "surgery_and_ibd")
 
-  violin_CD_2b [[i]] <- CD_2 %>% ggplot(aes(x = .data[[metric[i]]], y = surgery_and_ibd, color = surgery_and_ibd, fill = surgery_and_ibd)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = surgery_and_ibd), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("") +
-    theme(legend.position="none") 
-  
-    if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_CD_2b [[i]] <- violin_CD_2b [[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-    }
-}
+#violin_CD_2b
 
-#plots for Shannon entropy
-violin_CD_2b 
+grid.arrange(violin_CD_2b[[1]], violin_CD_2b[[2]], violin_CD_2b[[3]], violin_CD_2b[[4]], violin_CD_2b[[5]], violin_CD_2b[[6]], violin_CD_2b[[7]], violin_CD_2b[[8]], violin_CD_2b[[9]], violin_CD_2b[[10]], ncol=3) 
 ```
+
 
 Lets plot differences in effect of different surgical interventions:
 
 ```{r}
 violin_CD_2_surg <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- CD_2 %>% dplyr::group_by(surgery_type) %>% dplyr::summarise(grp_mean = mean(.data[[metric[i]]]))
-  plot_data <- CD_2 %>% dplyr::group_by(surgery_type) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+# Use violin function
+violin_CD_2_surg <- plot_violin(CD_2, "surgery_type")
 
-  violin_CD_2_surg [[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(surgery_type, -m), color = surgery_type, fill = surgery_type)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = surgery_type), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("") +
-    theme(legend.position="none") 
-  
-    if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_CD_2_surg [[i]] <- violin_CD_2_surg [[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-    }
-}
-
-#plots for Shannon entropy
-violin_CD_2_surg 
+violin_CD_2_surg
 ```
 
 Finally, lets compare cases and control from this study with cases from previous IBD studies and AGP controls:
@@ -438,27 +408,10 @@ CD_check$condition[CD_check$condition == "control"] <-'control_2'
 ```{r}
 violin_CD_check <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- CD_check %>% dplyr::group_by(condition) %>% dplyr::summarise(grp_mean = mean(.data[[metric[i]]]))
+# Use violin function
+violin_CD_check <- plot_violin(CD_check, "condition")
 
-  violin_CD_check [[i]] <- CD_check %>% ggplot(aes(x = .data[[metric[i]]], y = condition, color = condition, fill = condition)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = condition), linetype = "dashed")+ 
-    scale_y_discrete(limits=c("CD_2", "control_2", "CD_2_surgery", "CD_1", "control(AGP)")) +
-    labs(x = metric[i])+
-    ylab("")  +
-    theme(legend.position="none") 
-
-    if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_CD_check [[i]] <- violin_CD_check [[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
-}
-
-#plots for Shannon entropy
-violin_CD_check 
+violin_CD_check
 ```
 
 Here we can see that alpha diversity of CD samples from previous data set have similar mean values as CD_2 samples for all alpha indexes except from Faith's PD which is much higher and Gini index which is much lower than in this longitudinal study. On the other side, CD samples with past surgery had much lower mean in all measures. 
@@ -471,29 +424,19 @@ When it comes to samples with previous surgery, it is unclear whether the lower 
 test_CD_1 <- list()
 test_CD_2 <- list()
 
-for (i in 1:length(metric)){
-  test_CD_1[[i]] <- pairwise.wilcox.test(CD_1[[metric[i]]], CD_1$condition, p.adjust.method="none") %>% 
-  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test_CD_1[[i]]$p.value <- round(test_CD_1[[i]]$p.value, digits = 17)
-  
-  test_CD_2[[i]] <- pairwise.wilcox.test(CD_2[[metric[i]]], CD_2$surgery_and_ibd, p.adjust.method="none") %>% 
-  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test_CD_2[[i]]$p.value <- round(test_CD_2[[i]]$p.value, digits = 17)
-}
+test_CD_1 <- do_wilcox_test(CD_1, "condition")
+test_CD_2 <- do_wilcox_test(CD_2, "surgery_and_ibd")
 
-tests1 <- do.call(what = rbind, args = test_CD_1)
-tests2 <- do.call(what = rbind, args = test_CD_2)
-
-table_CD_1 <- tests1 %>% 
-  add_column(p.adjusted = p.adjust(tests1$p.value, "fdr"), .after='p.value') %>%
+table_CD_1 <- test_CD_1 %>% 
+  add_column(p.adjusted = p.adjust(test_CD_1$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different conditions in CD_1 dataset")
 
-table_CD_2 <- tests2 %>% 
-  add_column(p.adjusted = p.adjust(tests2$p.value, "fdr"), .after='p.value') %>%
+table_CD_2 <- test_CD_2 %>% 
+  add_column(p.adjusted = p.adjust(test_CD_2$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
@@ -522,16 +465,10 @@ CD_check_w <- CD_check %>% filter(CD_check$condition != "control(AGP)" & CD_chec
 
 test_CD_3 <- list()
 
-for (i in 1:length(metric)){
-  test_CD_3[[i]] <- pairwise.wilcox.test(CD_check_w[[metric[i]]], CD_check_w$condition, p.adjust.method="none") %>% 
-  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test_CD_3[[i]]$p.value <- round(test_CD_3[[i]]$p.value, digits = 17)
-}
+test_CD_3 <- do_wilcox_test(CD_check_w, "condition")
 
-tests <- do.call(what = rbind, args = test_CD_3)
-
-table_CD_3 <- tests %>% 
-  add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+table_CD_3 <- test_CD_3 %>% 
+  add_column(p.adjusted = p.adjust(test_CD_3$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
@@ -629,16 +566,10 @@ for (i in 1:length(cond)){
   trans_IBD_CDI_2 <- trans_IBD_CDI_1 %>%
     filter(condition == cond[i])
   
-  for (j in 1:length(metric)){
-    test_CDI_trans[[j]] <- pairwise.wilcox.test(trans_IBD_CDI_2[[metric[j]]], trans_IBD_CDI_2$day_since_fmt, p.adjust.method="none") %>% 
-    broom::tidy() %>% add_column(parameter = metric[j], .before='group1')
-    test_CDI_trans[[j]]$p.value <- round(test_CDI_trans[[j]]$p.value, digits = 17)
-  }
-  
-  tests <- do.call(what = rbind, args = test_CDI_trans)
+  test_CDI_trans <- do_wilcox_test(trans_IBD_CDI_2, "day_since_fmt")
 
-  table <- tests %>%
-    add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+  table <- test_CDI_trans %>%
+    add_column(p.adjusted = p.adjust(test_CDI_trans$p.value, "fdr"), .after='p.value') %>%
     flextable() %>%
     bold(~ p.value < 0.05, 4) %>%
     bold(~ p.adjusted < 0.05, 5) %>%
@@ -667,7 +598,6 @@ CD_2_merge$condition[CD_2_merge$condition=="control"] <- "healthy"
 CD_2_merge$condition[CD_2_merge$condition=="crohns"] <- "CD"
 
 healthy_disease_2 <- rbind.fill(healthy_disease, before_trans, CD_2_merge)
-#healthy_disease_2 <- rbind.fill(healthy_disease, before_trans)
 
 # Sizes of each dataset
 table(healthy_disease_2$condition)
@@ -689,57 +619,30 @@ Distribution of Faith's PD in different groups shows modality in most of the IBD
 ```{r}
 violin_all <- vector('list', length(metric))
 
-for (i in 1:length(metric)){
-  mean_line <- healthy_disease_2 %>% dplyr::group_by(condition) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
-  plot_data <- healthy_disease_2 %>% dplyr::group_by(condition) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+violin_all <- plot_violin(healthy_disease_2, "condition")
 
-  violin_all[[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(condition, -m), color = condition, fill = condition)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = condition), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("")+
-    ggtitle("A Violin plot of distributions of alpha metrics in different conditions")+
-    theme(legend.position="none") 
-  
-  if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_all[[i]] <- violin_all[[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
-}
-
-#plots for Shannon entropy
 violin_all
 ```
-
-
 
 ### Mann-Whitney-Wilcoxon Test
 
 Non-parametric test (does not assume normal distribution)
 
 ```{r}
-test <- list()
+test_all <- list()
 
-for (i in 1:length(metric)){
-  test[[i]] <- pairwise.wilcox.test(healthy_disease_2[[metric[i]]], healthy_disease_2$condition, p.adjust.method="none") %>% 
-  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test[[i]]$p.value <- round(test[[i]]$p.value, digits = 17)
-}
+test_all <- do_wilcox_test(healthy_disease_2, "condition")
 
-tests <- do.call(what = rbind, args = test)
-
-table1 <- tests %>% 
-  add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+table1 <- test_all %>% 
+  add_column(p.adjusted = p.adjust(test_all$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different conditions")
 
-table2 <- tests %>% 
-  add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+table2 <- test_all %>% 
+  add_column(p.adjusted = p.adjust(test_all$p.value, "fdr"), .after='p.value') %>%
   arrange(parameter, group1)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
