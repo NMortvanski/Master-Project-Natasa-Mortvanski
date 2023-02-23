@@ -245,14 +245,14 @@ tests_IBD <- list()
 tests_IBD <- do_wilcox_test(healthy_disease, "condition")
 
 table1 <- tests_IBD %>% 
-  add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different conditions")
 
 table2 <- tests_IBD %>% 
-  add_column(p.adjusted = p.adjust(tests$p.value, "fdr"), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
@@ -681,6 +681,43 @@ wilcox_p_value %>%
   flextable() %>%
   bold(~ p.value < 0.05, 2) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different parameters between healthy and unhealthy samples")
+```
+
+## Random forest classifier - feature importance
+
+Now, let's use random forest algorithm to calculate what is the importance of each alpha diversity metric for predicting condition of a sample. Ultimately, we want to choose the metrics that differentiate the best between healthy and unhealthy samples.
+[source](https://www.r-bloggers.com/2021/07/feature-importance-in-random-forest/)
+
+```{r}
+library(readxl)
+#install.packages("randomForest")
+library(randomForest)
+#install.packages("varImp")
+library(caret)
+
+healthy_disease_2$condition <- as.factor(healthy_disease_2$condition)
+
+#Random Forest Modelling
+model <- randomForest(condition ~ shannon_entropy + chao1 + menhinick + margalef + fisher_alpha + simpson + gini_index + strong + pielou_evenness + faith_pd, data = healthy_disease_2, importance=TRUE) 
+importance(model)
+varImpPlot(model)
+
+#Conditional=True, adjusts for correlations between predictors.
+i_scores <- caret::varImp(model, conditional = TRUE) 
+
+#Gathering rownames in 'var'  and converting it to the factor
+#to provide 'fill' parameter for the bar chart. 
+i_scores <- i_scores %>% tibble::rownames_to_column("var") 
+i_scores$var<- i_scores$var %>% as.factor()
+
+#Plotting the bar and polar charts for comparing variables
+for (cathegory in levels(healthy_disease_2$condition)){
+  i_bar <- i_scores %>% ggplot(aes(x = .data[[cathegory]], y=reorder(var, .data[[cathegory]]), fill = var)) + 
+    geom_bar(stat = "identity", show.legend = FALSE, width = 1) + 
+    labs(x = NULL, y = NULL, title = paste("Feature importance for condition category:", cathegory, sep =" "))+ 
+    theme_minimal() 
+  plot(i_bar)
+}
 ```
 
 # Conclusions
