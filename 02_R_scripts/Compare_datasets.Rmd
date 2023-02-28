@@ -82,6 +82,12 @@ Load *Fecal transplant - CDI with underlying IBD* data:
 trans_IBD_CDI <- read.csv(here("01_tidy_data", "all_trans_IBD_CDI.csv.gz"), header = TRUE, sep = ",")
 ```
 
+Load *Hospital Clinic's CDI* data
+
+```{r}
+hospital_CDI <- read.csv(here("01_tidy_data", "all_hosp_CDI.csv.gz"), header = TRUE, sep = ",")
+```
+
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
 
 ```{r}
@@ -681,6 +687,27 @@ wilcox_p_value %>%
   flextable() %>%
   bold(~ p.value < 0.05, 2) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of different parameters between healthy and unhealthy samples")
+```
+
+# Compare Hospital Clinic's data with other datasets
+
+Lets see how alpha diversity of CDI data from Hospital Clinic diverge from data from previous analysis:
+
+```{r}
+hospital_CDI$condition <- "CDI_hospital"
+
+compare_hospital <- rbind.fill(healthy_disease_2, hospital_CDI)
+
+# Sizes of each dataset
+table(compare_hospital$condition)
+```
+
+```{r}
+violin_compare <- vector('list', length(metric))
+
+violin_compare <- plot_violin(compare_hospital, "condition")
+
+violin_compare
 ```
 
 ## Random forest classifier - feature importance

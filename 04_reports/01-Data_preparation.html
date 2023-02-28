@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2023-02-23" />
+<meta name="date" content="2023-02-28" />
 
 <title>Data preparation</title>
 
@@ -448,7 +448,7 @@ pre code {
 <address class="author_afil">
 Universitat Pompeu Fabra<br><a class="author_email" href="mailto:#"><a href="mailto:natasa.mortvanski01@estudiant.upf.edu" class="email">natasa.mortvanski01@estudiant.upf.edu</a></a>
 </address>
-<h4 class="date">2023-02-23</h4>
+<h4 class="date">2023-02-28</h4>
 
 </div>
 
@@ -1145,6 +1145,32 @@ calculated all chosen alpha metrics.</p>
 <p>Export data frame into .tsv.gz file:</p>
 <pre class="r"><code>write.csv(all_trans_IBD_CDI, gzfile(here(&quot;01_tidy_data&quot;, &quot;all_trans_IBD_CDI.csv.gz&quot;)), row.names=FALSE)</code></pre>
 </div>
+<div id="hospital-dataset---cdi-samples" class="section level2">
+<h2>Hospital dataset - CDI samples</h2>
+<pre class="r"><code># Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;shannon_hosp_CDI.tsv.gz&quot;))
+chao1_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;chao1_hosp_CDI.tsv.gz&quot;))
+fisher_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;fisher_hosp_CDI.tsv.gz&quot;))
+margalef_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;margalef_hosp_CDI.tsv.gz&quot;))
+simpson_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;simpson_hosp_CDI.tsv.gz&quot;))
+gini_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;gini_hosp_CDI.tsv.gz&quot;))
+menhinick_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;menhinick_hosp_CDI.tsv.gz&quot;))
+strong_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;strong_hosp_CDI.tsv.gz&quot;))
+faith_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;faith_hosp_CDI.tsv.gz&quot;))
+pielou_hosp_CDI &lt;- read.delim(here(&quot;00_raw_data/06_hospital_CDI&quot;, &quot;pielou_hosp_CDI.tsv.gz&quot;))
+
+#put all data frames into list
+all_hosp_CDI &lt;- list(shannon_hosp_CDI, chao1_hosp_CDI, fisher_hosp_CDI, margalef_hosp_CDI, gini_hosp_CDI, menhinick_hosp_CDI, strong_hosp_CDI, simpson_hosp_CDI, faith_hosp_CDI, pielou_hosp_CDI) 
+
+#merge all data frames together
+all_hosp_CDI &lt;- all_hosp_CDI %&gt;% reduce(inner_join, by=&quot;X&quot;)
+
+names(all_hosp_CDI)[names(all_hosp_CDI) == &#39;X&#39;] &lt;- &#39;sample_id&#39;</code></pre>
+<p>We have 94 samples for which we have calculated all chosen alpha
+metrics.</p>
+<p>Export data frame into .tsv.gz file:</p>
+<pre class="r"><code>write.csv(all_hosp_CDI, gzfile(here(&quot;01_tidy_data&quot;, &quot;all_hosp_CDI.csv.gz&quot;)), row.names=FALSE)</code></pre>
+</div>
 </div>
 <div id="overview-of-descriptive-statistics-of-different-data-sets" class="section level1">
 <h1>Overview of descriptive statistics of different data sets:</h1>
@@ -1169,33 +1195,28 @@ calculated all chosen alpha metrics.</p>
 ## [11] LC_MEASUREMENT=es_ES.UTF-8 LC_IDENTIFICATION=C       
 ## 
 ## attached base packages:
-## [1] stats4    grid      stats     graphics  grDevices utils     datasets  methods   base     
+## [1] grid      stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] rmarkdown_2.17             knitr_1.40                 caret_6.0-90               lattice_0.20-45            corrplot_0.92             
-##  [6] PerformanceAnalytics_2.0.4 xts_0.12.1                 nortest_1.0-4              cowplot_1.1.1              here_1.0.1                
-## [11] ggplotify_0.1.0            RColorBrewer_1.1-3         ComplexHeatmap_2.10.0      tibble_3.1.8               flextable_0.8.2           
-## [16] dplyr_1.0.10               purrr_0.3.5                plyr_1.8.7                 gridExtra_2.3              ggplot2_3.4.0             
-## [21] stringr_1.4.1              data.table_1.14.4          readr_2.1.4                varImp_0.4                 party_1.3-11              
-## [26] strucchange_1.5-3          sandwich_3.0-1             zoo_1.8-9                  modeltools_0.2-23          mvtnorm_1.1-3             
-## [31] measures_0.3               randomForest_4.7-1.1       readxl_1.4.1              
+##  [1] rmarkdown_2.17        knitr_1.40            caret_6.0-90          lattice_0.20-45       randomForest_4.7-1.1  readxl_1.4.1          here_1.0.1           
+##  [8] ggplotify_0.1.0       RColorBrewer_1.1-3    ComplexHeatmap_2.10.0 tibble_3.1.8          flextable_0.8.2       dplyr_1.0.10          purrr_0.3.5          
+## [15] plyr_1.8.7            gridExtra_2.3         ggplot2_3.4.0         stringr_1.4.1         data.table_1.14.4     readr_2.1.4          
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] uuid_1.1-0           backports_1.4.1      circlize_0.4.15      systemfonts_1.0.4    splines_4.1.2        listenv_0.8.0        TH.data_1.1-0       
-##   [8] digest_0.6.30        foreach_1.5.2        yulab.utils_0.0.5    htmltools_0.5.3      fansi_1.0.3          magrittr_2.0.3       cluster_2.1.2       
-##  [15] doParallel_1.0.17    tzdb_0.3.0           recipes_0.1.17       globals_0.14.0       gower_1.0.0          matrixStats_0.61.0   officer_0.4.4       
-##  [22] colorspace_2.0-3     xfun_0.37            crayon_1.5.2         jsonlite_1.8.3       libcoin_1.0-9        survival_3.2-13      iterators_1.0.14    
-##  [29] glue_1.6.2           gtable_0.3.1         ipred_0.9-12         GetoptLong_1.0.5     future.apply_1.8.1   shape_1.4.6          BiocGenerics_0.40.0 
-##  [36] scales_1.2.1         DBI_1.1.3            Rcpp_1.0.8           clue_0.3-62          gridGraphics_0.5-1   lava_1.6.10          prodlim_2019.11.13  
-##  [43] ellipsis_0.3.2       pkgconfig_2.0.3      farver_2.1.1         nnet_7.3-17          sass_0.4.2           utf8_1.2.2           tidyselect_1.2.0    
-##  [50] labeling_0.4.2       rlang_1.0.6          reshape2_1.4.4       munsell_0.5.0        cellranger_1.1.0     tools_4.1.2          cachem_1.0.6        
-##  [57] cli_3.4.1            generics_0.1.3       broom_1.0.1          evaluate_0.17        fastmap_1.1.0        yaml_2.3.6           ModelMetrics_1.2.2.2
-##  [64] zip_2.2.0            coin_1.4-2           future_1.24.0        nlme_3.1-155         xml2_1.3.3           compiler_4.1.2       rstudioapi_0.14     
-##  [71] png_0.1-7            bslib_0.4.1          stringi_1.7.8        highr_0.9            gdtools_0.2.4        Matrix_1.4-0         vctrs_0.5.0         
-##  [78] pillar_1.8.1         lifecycle_1.0.3      jquerylib_0.1.4      GlobalOptions_0.1.2  R6_2.5.1             IRanges_2.28.0       parallelly_1.30.0   
-##  [85] codetools_0.2-18     MASS_7.3-55          assertthat_0.2.1     rprojroot_2.0.2      rjson_0.2.21         withr_2.5.0          multcomp_1.4-18     
-##  [92] S4Vectors_0.32.4     parallel_4.1.2       hms_1.1.2            quadprog_1.5-8       rpart_4.1.16         timeDate_3043.102    tidyr_1.2.1         
-##  [99] class_7.3-20         pROC_1.18.0          lubridate_1.8.0      base64enc_0.1-3</code></pre>
+##  [1] colorspace_2.0-3     rjson_0.2.21         ellipsis_0.3.2       class_7.3-20         rprojroot_2.0.2      circlize_0.4.15      GlobalOptions_0.1.2 
+##  [8] base64enc_0.1-3      clue_0.3-62          rstudioapi_0.14      listenv_0.8.0        farver_2.1.1         prodlim_2019.11.13   fansi_1.0.3         
+## [15] lubridate_1.8.0      xml2_1.3.3           codetools_0.2-18     splines_4.1.2        doParallel_1.0.17    cachem_1.0.6         jsonlite_1.8.3      
+## [22] pROC_1.18.0          broom_1.0.1          cluster_2.1.2        png_0.1-7            compiler_4.1.2       backports_1.4.1      assertthat_0.2.1    
+## [29] Matrix_1.4-0         fastmap_1.1.0        cli_3.4.1            htmltools_0.5.3      tools_4.1.2          gtable_0.3.1         glue_1.6.2          
+## [36] reshape2_1.4.4       Rcpp_1.0.8           jquerylib_0.1.4      cellranger_1.1.0     vctrs_0.5.0          nlme_3.1-155         iterators_1.0.14    
+## [43] timeDate_3043.102    gower_1.0.0          xfun_0.37            globals_0.14.0       lifecycle_1.0.3      future_1.24.0        MASS_7.3-55         
+## [50] scales_1.2.1         ipred_0.9-12         hms_1.1.2            parallel_4.1.2       yaml_2.3.6           sass_0.4.2           gdtools_0.2.4       
+## [57] yulab.utils_0.0.5    rpart_4.1.16         stringi_1.7.8        highr_0.9            S4Vectors_0.32.4     foreach_1.5.2        BiocGenerics_0.40.0 
+## [64] zip_2.2.0            lava_1.6.10          shape_1.4.6          rlang_1.0.6          pkgconfig_2.0.3      systemfonts_1.0.4    matrixStats_0.61.0  
+## [71] evaluate_0.17        recipes_0.1.17       labeling_0.4.2       tidyselect_1.2.0     parallelly_1.30.0    magrittr_2.0.3       R6_2.5.1            
+## [78] IRanges_2.28.0       generics_0.1.3       DBI_1.1.3            pillar_1.8.1         withr_2.5.0          survival_3.2-13      nnet_7.3-17         
+## [85] future.apply_1.8.1   crayon_1.5.2         uuid_1.1-0           utf8_1.2.2           tzdb_0.3.0           officer_0.4.4        GetoptLong_1.0.5    
+## [92] ModelMetrics_1.2.2.2 digest_0.6.30        tidyr_1.2.1          gridGraphics_0.5-1   stats4_4.1.2         munsell_0.5.0        bslib_0.4.1</code></pre>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>

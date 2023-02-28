@@ -740,6 +740,38 @@ Export data frame into .tsv.gz file:
 write.csv(all_trans_IBD_CDI, gzfile(here("01_tidy_data", "all_trans_IBD_CDI.csv.gz")), row.names=FALSE)
 ```
 
+## Hospital dataset - CDI samples
+
+```{r}
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "shannon_hosp_CDI.tsv.gz"))
+chao1_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "chao1_hosp_CDI.tsv.gz"))
+fisher_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "fisher_hosp_CDI.tsv.gz"))
+margalef_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "margalef_hosp_CDI.tsv.gz"))
+simpson_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "simpson_hosp_CDI.tsv.gz"))
+gini_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "gini_hosp_CDI.tsv.gz"))
+menhinick_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "menhinick_hosp_CDI.tsv.gz"))
+strong_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "strong_hosp_CDI.tsv.gz"))
+faith_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "faith_hosp_CDI.tsv.gz"))
+pielou_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "pielou_hosp_CDI.tsv.gz"))
+
+#put all data frames into list
+all_hosp_CDI <- list(shannon_hosp_CDI, chao1_hosp_CDI, fisher_hosp_CDI, margalef_hosp_CDI, gini_hosp_CDI, menhinick_hosp_CDI, strong_hosp_CDI, simpson_hosp_CDI, faith_hosp_CDI, pielou_hosp_CDI) 
+
+#merge all data frames together
+all_hosp_CDI <- all_hosp_CDI %>% reduce(inner_join, by="X")
+
+names(all_hosp_CDI)[names(all_hosp_CDI) == 'X'] <- 'sample_id'
+```
+
+We have `r nrow(all_hosp_CDI)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .tsv.gz file:
+
+```{r}
+write.csv(all_hosp_CDI, gzfile(here("01_tidy_data", "all_hosp_CDI.csv.gz")), row.names=FALSE)
+```
+
 # Overview of descriptive statistics of different data sets:
 
 ```{r}
