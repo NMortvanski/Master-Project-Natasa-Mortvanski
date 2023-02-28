@@ -17,6 +17,7 @@ This is a repository containing the R project with the following directories:
     3. Guiding longitudinal sampling in inflammatory bowel diseases cohorts -> ...samples , [dataset link](https://qiita.ucsd.edu/study/description/2538#)
     4. Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/10057)
     5. Dynamic changes in short- and long-term bacterial composition following fecal microbiota transplantation for recurrent Clostridium difficile infection -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/1924)
+    6. Hospital Clinic's CDI data (only calculated alpha diversity metrics)
 
   For all of the studies above, following alpha metrics wese computed:
   
