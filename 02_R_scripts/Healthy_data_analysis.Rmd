@@ -50,7 +50,7 @@ nrow(all_healthy)
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
 
 ```{r}
-metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" ) 
+metric <- c("menhinick", "margalef", "faith_pd", "chao1", "shannon_entropy", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness") 
 ```
 
 Generate a vector of 10 random colors for histograms:
@@ -90,8 +90,12 @@ for (i in 1:length(metric)){
 stat_ad <- lapply(stat_ad, unname) %>% unlist(stat_ad)
 pval_ad <- unlist(pval_ad)
 
-data.frame(metric=metric, statistic=stat_ad, p.value=pval_ad) %>% flextable() %>%
-    add_header_lines(values = "Results of the Anderson-Darling Test of distribution normality")
+table_anderson <- data.frame(metric=metric, statistic=stat_ad, p.value=pval_ad) 
+table_anderson$p.value <- round(table_anderson$p.value, digits = 3)
+table_anderson %>% 
+  arrange(desc(p.value)) %>%
+  flextable() %>%
+  add_header_lines(values = "Results of the Anderson-Darling Test of distribution normality")
 ```
 
 All of the alpha metrics have somewhat skewd distribution, but the ones that are closeest to normal distribution are:
@@ -113,8 +117,9 @@ library(corrplot)
 metrics <- all_healthy[,2:11]
 cor_matrix <- cor(metrics)
 
-corrplot(cor_matrix, type = "upper", order = "hclust", 
-         tl.col = "black", tl.srt = 45)
+#corrplot(cor_matrix, type = "upper", order = "hclust", addrect = 3, tl.col = "black", tl.srt = 45)
+
+corrplot(cor_matrix, order = 'hclust', addrect = 3, tl.col = "black", tl.srt = 45)
 ```
 
 ```{r}
@@ -145,7 +150,7 @@ correlation_num %>% tibble::rownames_to_column() %>% flextable()
 # Plot correlation 
 cor_matrix <- cor(data_num[-c(1:10)], data_num[-c(11:14)])
 
-corrplot(cor_matrix, tl.col = "black", tl.srt = 45)
+corrplot(cor_matrix, method = 'color', tl.col = "black", tl.srt = 45, is.corr = FALSE)
 ```
 
 Correlations between numerical variables and alpha metrics are really weak. We can conclude that age, BMI height and weight do not affect significantly alpha diversity (*we have already filtered out samples of age <20 and >69 and of BMI <18,5 and >25).
@@ -241,40 +246,43 @@ library(randomForest)
 #install.packages("varImp")
 library(varImp)
 
-  data_cat_rf <- all_healthy[ , cat_cols]
-  data_cat_rf$sample_id <- NULL
-  data_cat_rf$shannon_entropy <- all_healthy$shannon_entropy
-  
-  # Random Forest Modelling
-  #model <- randomForest(shannon_entropy ~ ., data = data_cat_rf, ntree=500) 
-  
-  # The number of variables selected at each split is denoted by mtry in randomforest function.
-  # Let's find the optimal mtry value:
-  mtry <- tuneRF(data_cat_rf[-1],data_cat_rf$shannon_entropy, ntreeTry=500,
-                 stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
-  best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
-  print(mtry)
-  print(best.m)
-  
-  # Now use optimal mtry (the one with minimum bag(OOB) error.) in new model:
-  rf <-randomForest(shannon_entropy~., data=data_cat_rf, mtry=best.m, importance=TRUE,ntree=500)
-  
-  #Conditional=True, adjusts for correlations between predictors.
-  i_scores <- caret::varImp(rf, conditional = TRUE) 
-  
-  #Gathering rownames in 'var'  and converting it to the factor
-  #to provide 'fill' parameter for the bar chart. 
-  i_scores <- i_scores %>% tibble::rownames_to_column("var") 
-  i_scores$var<- i_scores$var %>% as.factor()
-  i_scores <- arrange(i_scores, desc(Overall))
-  i_scores_plot <- i_scores[1:20,]
-  
-  #Plotting the bar and polar charts for comparing variables
-  i_bar <- i_scores_plot %>% ggplot(aes(x = Overall, y= reorder(var, Overall), fill = var)) + 
-    geom_bar(stat = "identity", show.legend = FALSE, width = 1) + 
-    labs(x = NULL, y = NULL, title = "Feature importance for shannon_entropy")+ 
-    theme_minimal()
-  plot(i_bar)
+data_cat_rf <- all_healthy[ , cat_cols]
+data_cat_rf$sample_id <- NULL
+data_cat_rf$shannon_entropy <- all_healthy$shannon_entropy
+
+# Random Forest Modelling
+#model <- randomForest(shannon_entropy ~ ., data = data_cat_rf, ntree=500) 
+
+# The number of variables selected at each split is denoted by mtry in randomforest function.
+# Let's find the optimal mtry value:
+mtry <- tuneRF(data_cat_rf[,1:178],data_cat_rf$shannon_entropy, ntreeTry=500,
+               stepFactor=1.5,improve=0.01, trace=TRUE, plot=TRUE)
+best.m <- mtry[mtry[, 2] == min(mtry[, 2]), 1]
+print(mtry)
+print(best.m)
+
+# Now use optimal mtry (the one with minimum bag(OOB) error.) in new model:
+rf <-randomForest(shannon_entropy~., data=data_cat_rf, mtry=best.m, importance=TRUE,ntree=500)
+
+#plot(rf)
+#varImpPlot(rf)
+
+#Conditional=True, adjusts for correlations between predictors.
+i_scores <- caret::varImp(rf, conditional = TRUE) 
+
+#Gathering rownames in 'var'  and converting it to the factor
+#to provide 'fill' parameter for the bar chart. 
+i_scores <- i_scores %>% tibble::rownames_to_column("var") 
+i_scores$var<- i_scores$var %>% as.factor()
+i_scores <- arrange(i_scores, desc(Overall))
+i_scores_plot <- i_scores[1:20,]
+
+#Plotting the bar and polar charts for comparing variables
+i_bar <- i_scores_plot %>% ggplot(aes(x = Overall, y= reorder(var, Overall), fill = var)) + 
+  geom_bar(stat = "identity", show.legend = FALSE, width = 1) + 
+  labs(x = NULL, y = NULL, title = "Feature importance for shannon_entropy")+ 
+  theme_minimal()
+plot(i_bar)
 ```
 
 

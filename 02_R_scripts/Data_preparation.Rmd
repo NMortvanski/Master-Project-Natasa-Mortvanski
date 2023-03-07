@@ -112,8 +112,24 @@ AGP_healthy_subset <- AGP_healthy_subset %>%
          host_body_mass_index < 25)
 
 # Filtering criteria No. 1
-## Include only samples that have reported not having any of the following diseases
+## Other solution is to apply only filters used in original AGP study:
 AGP_healthy_subset_1 <- AGP_healthy_subset %>%
+  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition")
+
+# Filtering criteria No. 2
+## AGP filters + no IBS or Cdiff
+AGP_healthy_subset_2 <- AGP_healthy_subset %>%
+  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition" &
+         ibs=="I do not have this condition" &
+         cdiff=="I do not have this condition")
+
+# Filtering criteria No. 3
+## Include only samples that have reported not having any of the following diseases
+AGP_healthy_subset_3 <- AGP_healthy_subset %>%
   filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
          diabetes=="I do not have this condition" & 
          ibd=="I do not have this condition" &
@@ -138,31 +154,18 @@ AGP_healthy_subset_1 <- AGP_healthy_subset %>%
          lung_disease =="I do not have this condition" &
          liver_disease =="I do not have this condition")
 
-# Filtering criteria No. 2
-## Other solution is to apply only filters used in original AGP study:
-AGP_healthy_subset_2 <- AGP_healthy_subset %>%
-  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
-         diabetes=="I do not have this condition" & 
-         ibd=="I do not have this condition")
-
-# Filtering criteria No. 3
-## AGP filters + no IBS or Cdiff
-AGP_healthy_subset_3 <- AGP_healthy_subset %>%
-  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
-         diabetes=="I do not have this condition" & 
-         ibd=="I do not have this condition" &
-         ibs=="I do not have this condition" &
-         cdiff=="I do not have this condition")
-
 # Number of samples without any reported clinical condition
-nrow(AGP_healthy_subset_1)  #861
+nrow(AGP_healthy_subset_1)  #2292
 
 # Number of samples after filtering only by criteria reported by AGP paper
-nrow(AGP_healthy_subset_2)  #3275
+nrow(AGP_healthy_subset_2)  #1465
 
 # Number of samples after filtering only by criteria reported by AGP paper + without IBS and Cdiff
-nrow(AGP_healthy_subset_3)  #2145
+nrow(AGP_healthy_subset_3)  #600
 ```
+First subset of data filtered only by criteria from AGP paper contains `r nrow(AGP_healthy_subset_1)` samples.
+Second subset of data filtered by criteria from paper with additionally filtered out IBS and Cdiff positive samples contain `r nrow(AGP_healthy_subset_2)` samples.
+Finally, the third subset that consists of samples with none reported diseases contains `r nrow(AGP_healthy_subset_3)` samples.
 
 Lets see if there is a difference in values of alpha diversity metrics in different subsets:
 
@@ -258,7 +261,7 @@ for (i in 1:length(metric)){
     histo[[i]][[j]] <- subset_list[[j]] %>% ggplot(aes(x = .data[[metric[i]]])) +
       geom_histogram(aes(y=..density..), colour="black", fill="white", bins=30)+
       geom_density(alpha=.2, fill=colors[i]) +
-      xlab(label = paste(metric[i], names(subset_list[j]), sep=' in ')) + 
+      xlab(label = paste(names(subset_list[j]),"(n =", nrow(subset_list[[j]]), ")", sep=' ')) + 
       ylab(label ="density")
   }
 }
@@ -280,7 +283,7 @@ for (i in 1:length(metric)){
 For now lets use the subset of healthy samples after most restrictive filtering (healthy AGP participants without any reported disease):
 
 ```{r}
-AGP_healthy_subset <- AGP_healthy_subset_1
+AGP_healthy_subset <- AGP_healthy_subset_3
 
 nrow(AGP_healthy_subset)
 ```
@@ -408,6 +411,8 @@ Following studies will be used as source of samples (from American donors) of di
 
 [4.](#fecal-transplantation-ibd-and-cdi-dataset) Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> [dataset link](https://qiita.ucsd.edu/study/description/10057)
 
+[5.](#hospital-clinic's-cdi-samples) Dataset of Hospital Clinic's CDI patients' samples pre and post fecal microbiom transplantation 
+
 All studies' data and metadata is available on Qiita platform.
 
 ```{r}
@@ -428,11 +433,14 @@ C_diff_tr <- read.delim(here("00_raw_data/04_C_difficile", "sample_information_f
 # for study 5.
 trans_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "sample_information_transpl_CDI_IBD.txt.gz"))
 
+# for hospital's CDI dataset 
+hosp_CDI_meta_all <- read.delim(here("00_raw_data/06_hospital_CDI", "sample-metadata.tsv.gz"))
+
 # change the name of second column in IBD_meta_1 so it matches colimn names n IBD_meta_2
 names(IBD_meta_1)[names(IBD_meta_1) == 'diagnosis'] <- 'condition'
 names(IBD_meta_2)[names(IBD_meta_2) == 'disease'] <- 'condition'
 names(trans_IBD_CDI)[names(trans_IBD_CDI) == 'pathology'] <- 'condition'
-
+names(hosp_CDI_meta_all)[names(hosp_CDI_meta_all) == 'Sample.ID'] <- 'sample_id'
 ```
 
 ## IBD datasets
@@ -743,6 +751,12 @@ write.csv(all_trans_IBD_CDI, gzfile(here("01_tidy_data", "all_trans_IBD_CDI.csv.
 ## Hospital dataset - CDI samples
 
 ```{r}
+hosp_CDI_meta <- select(hosp_CDI_meta_all, sample_id, sample.origin, sex, age, time, CDItreatment.PREFMT, severeICD, Clinicalrecurrence)
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'sample.origin'] <- 'condition'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'time'] <- 'day_since_fmt'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'CDItreatment.PREFMT'] <- 'antibiotic_use'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'Clinicalrecurrence'] <- 'clinical_recurrence'
+
 # Load .tsv.gz files from inflammatory bowel disease analysis
 shannon_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "shannon_hosp_CDI.tsv.gz"))
 chao1_hosp_CDI <- read.delim(here("00_raw_data/06_hospital_CDI", "chao1_hosp_CDI.tsv.gz"))
@@ -762,8 +776,24 @@ all_hosp_CDI <- list(shannon_hosp_CDI, chao1_hosp_CDI, fisher_hosp_CDI, margalef
 all_hosp_CDI <- all_hosp_CDI %>% reduce(inner_join, by="X")
 
 names(all_hosp_CDI)[names(all_hosp_CDI) == 'X'] <- 'sample_id'
+
+all_hosp_CDI <- all_hosp_CDI %>% left_join(hosp_CDI_meta, by=c('sample_id' = 'sample_id'))
+
+# This filters out pool samples because of the lack of entries in metadata
+all_hosp_CDI <- all_hosp_CDI[complete.cases(all_hosp_CDI),]
 ```
 
+Filtering:
+
+```{r}
+all_hosp_CDI <- all_hosp_CDI %>%
+  filter(age > 20 & age < 69)
+
+all_hosp_CDI <- all_hosp_CDI %>%
+  filter(condition == "Cdif")
+
+nrow(all_hosp_CDI)
+```
 We have `r nrow(all_hosp_CDI)` samples for which we have calculated all chosen alpha metrics.
 
 Export data frame into .tsv.gz file:

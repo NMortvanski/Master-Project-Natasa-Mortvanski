@@ -1,11 +1,13 @@
 ---
 title: "Comparative analysis of microbial diversity of healthy vs disease samples"
 author:
-- name: "Natasa Mortvanski"
+- name: Natasa Mortvanski
   affiliation: Universitat Pompeu Fabra
   email: natasa.mortvanski01@estudiant.upf.edu
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -691,12 +693,76 @@ wilcox_p_value %>%
 
 # Compare Hospital Clinic's data with other datasets
 
+First lets see the difference in alpha diversity in relation to the day of sampling (time since/before FMT):
+
+```{r}
+table(hospital_CDI$day_since_fmt)
+
+for (n in 1:nrow(hospital_CDI)){
+  hospital_CDI$subject[n] <- read.table(text = hospital_CDI$sample_id[n], sep = "-", as.is = TRUE)$V1
+}
+```
+
+```{r}
+progression_hospital <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+  progression_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], group=subject)) +
+    geom_line(aes(color=subject))+
+    geom_point(aes(color=subject))+
+    facet_wrap(vars(subject), scale="free", ncol=5)
+}
+
+progression_hospital
+```
+
+```{r}
+violin_hospital <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+  mean_line <- hospital_CDI %>% dplyr::group_by(day_since_fmt) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
+
+  violin_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x = .data[[metric[i]]], y = day_since_fmt, color = day_since_fmt, fill = day_since_fmt)) +
+    geom_violin()+
+    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = day_since_fmt), linetype = "dashed")+ 
+    labs(x = metric[i])+
+    ylab("") 
+  
+  if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
+   violin_hospital[[i]] <- violin_hospital[[i]] + 
+     scale_x_continuous(trans = 'log10') +
+     xlab(paste(metric[i], "(log10)", sep = " ")) 
+  }
+}
+
+violin_hospital
+```
+
+
+```{r}
+hospital_CDI_2 <- hospital_CDI
+levels(hospital_CDI_2$day_since_fmt) <- list("pre-FMT" = "-10", "pre-FMT" = "-1", "post-FMT" = "2", "post-FMT" = "5", "post-FMT" = "7", "post-FMT" = "30", "post-FMT" = "90" )
+table(hospital_CDI_2$day_since_fmt)
+```
+
+```{r}
+violin_hospital_2 <- vector('list', length(metric))
+
+violin_hospital_2 <- plot_violin(hospital_CDI_2, "day_since_fmt")
+
+violin_hospital_2
+```
+
 Lets see how alpha diversity of CDI data from Hospital Clinic diverge from data from previous analysis:
 
 ```{r}
-hospital_CDI$condition <- "CDI_hospital"
+hospital_CDI_pre_FMT <- hospital_CDI_2 %>%
+  filter(day_since_fmt == "pre-FMT")
 
-compare_hospital <- rbind.fill(healthy_disease_2, hospital_CDI)
+hospital_CDI_pre_FMT$condition[hospital_CDI_pre_FMT$condition == "Cdif"] <- "hospital_Cdif"
+
+compare_hospital <- rbind.fill(healthy_disease_2, hospital_CDI_pre_FMT)
 
 # Sizes of each dataset
 table(compare_hospital$condition)
@@ -722,12 +788,41 @@ library(randomForest)
 #install.packages("varImp")
 library(caret)
 
-healthy_disease_2$condition <- as.factor(healthy_disease_2$condition)
+feature_importance <- select(healthy_disease_2, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, gini_index, strong, pielou_evenness, faith_pd, condition)
 
-#Random Forest Modelling
-model <- randomForest(condition ~ shannon_entropy + chao1 + menhinick + margalef + fisher_alpha + simpson + gini_index + strong + pielou_evenness + faith_pd, data = healthy_disease_2, importance=TRUE) 
+feature_importance$condition[feature_importance$condition != "healthy"] <- "unhealthy"
+
+feature_importance$condition <- as.factor(feature_importance$condition)
+table(feature_importance$condition)
+```
+
+```{r}
+# Let's make training and testing subset of data
+#make this example reproducible
+set.seed(1)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(feature_importance), replace=TRUE, prob=c(0.7,0.3))
+train  <- feature_importance[sample, ]
+test   <- feature_importance[!sample, ]
+
+table(train$condition)
+```
+
+```{r}
+# Random Forest Modelling
+model <- randomForest(condition ~ shannon_entropy + chao1 + menhinick + margalef + fisher_alpha + simpson + gini_index + strong + pielou_evenness + faith_pd, data = train, importance=TRUE) 
+
+# Calculating accuracy
+prediction <-predict(model, test)
+confusion_matrix <- confusionMatrix(prediction, test$condition)
+confusion_matrix$overall["Accuracy"]
+```
+The accuracy of the model is `r confusion_matrix$overall["Accuracy"]`
+
+```{r}
 importance(model)
-varImpPlot(model)
+varImpPlot(model, main= "Mean descrease in accuracy and  Gini index over all classes")
 
 #Conditional=True, adjusts for correlations between predictors.
 i_scores <- caret::varImp(model, conditional = TRUE) 
@@ -738,10 +833,10 @@ i_scores <- i_scores %>% tibble::rownames_to_column("var")
 i_scores$var<- i_scores$var %>% as.factor()
 
 #Plotting the bar and polar charts for comparing variables
-for (cathegory in levels(healthy_disease_2$condition)){
+for (cathegory in levels(feature_importance$condition)){
   i_bar <- i_scores %>% ggplot(aes(x = .data[[cathegory]], y=reorder(var, .data[[cathegory]]), fill = var)) + 
     geom_bar(stat = "identity", show.legend = FALSE, width = 1) + 
-    labs(x = NULL, y = NULL, title = paste("Feature importance for condition category:", cathegory, sep =" "))+ 
+    labs(x = NULL, y = NULL, title = paste("Mean descrease in accuracy for condition category:", cathegory, sep =" "))+ 
     theme_minimal() 
   plot(i_bar)
 }
