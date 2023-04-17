@@ -1,0 +1,478 @@
+---
+title: "Data preparation"
+author:
+- name: "Natasa Mortvanski"
+  affiliation: Universitat Pompeu Fabra
+  email: natasa.mortvanski01@estudiant.upf.edu
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document contains the code for data preparation (loading different alpha metrics, filtering of the samples and columns of interest) of American Gut Project data that is going to be used as [healthy control](#healthy-data-preprocessing) in this Master thesis, as well as data from various studies of different [pathological conditions](#disease-data-preprocessing) supposedly affecting gut microbiome alpha diversity.
+
+# Healthy data preprocessing
+
+Loading necessary libraries:
+
+```{r}
+library(dplyr)
+#install.packages('purrr')
+library(purrr)
+library(tibble)
+library(ggplot2)
+library(stringr)
+library(RColorBrewer)
+library(gridExtra)
+library(grid)
+#install.packages("here")
+library(here)
+library(flextable)
+```
+
+### About dataset:
+
+As a source of samples for healthy control we chose American Gut Project study. Data and metadata are available on Qiita platform:
+
+1. Subset of the American Gut Project dataset (healthy dataset) -> [dataset link](https://qiita.ucsd.edu/study/description/10317)
+
+Loading the metadata file for AGP study samples:
+
+```{r}
+AGP_metadata <- read.delim(here("00_raw_data/01_AGP_data", "10317_20221012-092710.txt.gz"))
+
+nrow(AGP_metadata)
+length(AGP_metadata)
+```
+
+Loading tables containing different alpha diversity metrics:
+
+```{r}
+shannon_AGP <- read.delim(here("00_raw_data/01_AGP_data", "shannon_AGP_all.tsv.gz"))
+chao1_AGP <- read.delim(here("00_raw_data/01_AGP_data", "chao1_AGP_all.tsv.gz"))
+menhinick_AGP <- read.delim(here("00_raw_data/01_AGP_data", "menhinick_AGP_all.tsv.gz"))
+margalef_AGP <- read.delim(here("00_raw_data/01_AGP_data", "margalef_AGP_all.tsv.gz"))
+simpson_AGP <- read.delim(here("00_raw_data/01_AGP_data", "simpson_AGP_all.tsv.gz"))
+fisher_AGP <- read.delim(here("00_raw_data/01_AGP_data", "fisher_AGP_all.tsv.gz"))
+gini_AGP <- read.delim(here("00_raw_data/01_AGP_data", "gini_AGP_all.tsv.gz"))
+strong_AGP <- read.delim(here("00_raw_data/01_AGP_data", "strong_AGP_all.tsv.gz"))
+faith_AGP <- read.delim(here("00_raw_data/01_AGP_data", "faith_AGP_all.tsv.gz"))
+pielou_AGP <- read.delim(here("00_raw_data/01_AGP_data", "pielou_AGP_all.tsv.gz"))
+
+
+# Merge alpha diversity data frames
+
+names(faith_AGP)[names(faith_AGP) == 'X.SampleID'] <- 'X'
+all_alpha <- list(shannon_AGP, chao1_AGP, menhinick_AGP, margalef_AGP, fisher_AGP, gini_AGP, strong_AGP, simpson_AGP, faith_AGP, pielou_AGP) 
+all_alpha <- all_alpha %>% reduce(inner_join, by="X")
+names(all_alpha)[names(all_alpha) == 'X'] <- 'sample_id'
+
+
+nrow(all_alpha)
+```
+
+Totall number of samples in this dataset is `r nrow(all_alpha)`.
+
+Now lets combine alpha metrics and metadata in the same dataframe (`AGP`):
+
+```{r}
+# Merge all_alpha and AGP_metadata
+AGP <- all_alpha %>% left_join(AGP_metadata, by=c('sample_id' = 'sample_name'))
+AGP <- replace(AGP, is.na(AGP), "")
+
+
+nrow(AGP)
+```
+
+We are left with `r nrow(AGP)` samples for which alpha metrics were calculated.
+\
+
+Let's define vector of names of the alpha diversity metrics that are going to be analysed:
+
+```{r}
+metric <- c("chao1", "margalef", "menhinick", "fisher_alpha", "faith_pd", "gini_index", "strong", "pielou_evenness", "shannon_entropy", "simpson") 
+```
+
+Lets filter out samples that are truly healthy:
+
+```{r}
+# Filter samples by age (only adult samples)
+AGP_healthy_subset <- AGP %>%
+  filter(age_cat== "20s" | 
+         age_cat== "30s" | 
+         age_cat== "40s" | 
+         age_cat== "50s" | 
+         age_cat== "60s")
+
+# Filter out stool and feces samples
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(sample_type=="feces" | 
+         sample_type=="Stool")
+
+```
+
+Check whether BMI category affects alpha diversity:
+
+```{r}
+for (i in 1:nrow(AGP_healthy_subset)){
+  if (AGP_healthy_subset$host_body_mass_index[i] < 25){
+    AGP_healthy_subset$BMI_cat[i] <- "normal"
+  } else {
+    AGP_healthy_subset$BMI_cat[i] <- "obese"
+  } 
+}
+
+table(AGP_healthy_subset$BMI_cat)
+```
+
+```{r}
+violin <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+  mean_line <- AGP_healthy_subset %>% dplyr::group_by(BMI_cat) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
+  plot_data <- AGP_healthy_subset %>% dplyr::group_by(BMI_cat) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+
+  violin[[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(BMI_cat, -m), color = BMI_cat, fill = BMI_cat)) +
+    geom_violin()+
+    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = BMI_cat), linetype = "dashed")+ 
+    labs(x = metric[i])+
+    ylab("")+
+    theme(legend.position="none") 
+  
+  if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
+   violin[[i]] <- violin[[i]] + 
+     scale_x_continuous(trans = 'log10') +
+     xlab(paste(metric[i], "(log10)", sep = " ")) 
+  }
+}
+
+grid.arrange(violin[[1]], violin[[2]], violin[[3]], violin[[4]], violin[[5]], violin[[6]], violin[[7]], violin[[8]], violin[[9]], violin[[10]], ncol=3) 
+```
+
+```{r}
+test <- list()
+
+for (i in 1:length(metric)){
+  test[[i]] <- pairwise.wilcox.test(AGP_healthy_subset[[metric[i]]], AGP_healthy_subset$BMI_cat, p.adjust.method="none") %>% 
+  broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
+  test[[i]]$p.value <- round(test[[i]]$p.value, digits = 5)
+}
+
+tests <- do.call(what = rbind, args = test)
+
+tests <- tests %>% 
+  add_column(p.adjusted = round(p.adjust(tests$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value, parameter)  %>%
+  flextable() %>% 
+  bold(~ p.value < 0.05, 4) %>%
+  bold(~ p.adjusted < 0.05, 5) %>%
+  add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for...")
+
+tests
+```
+
+There is signifficant difference between obese and normal samples. It is necessary to filter out obese samples.
+
+```{r}
+#Keep only samples with normal BMI
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(host_body_mass_index > 18.5 & 
+         host_body_mass_index < 25)
+
+# Filtering criteria No. 1
+## Other solution is to apply only filters used in original AGP study:
+AGP_healthy_subset_1 <- AGP_healthy_subset %>%
+  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition")
+
+# Filtering criteria No. 2
+## Filter out samples with reported IBD, IBS and Cdiff + no antibiotics
+AGP_healthy_subset_2 <- AGP_healthy_subset %>%
+  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
+         ibd=="I do not have this condition" &
+         ibs=="I do not have this condition" &
+         cdiff=="I do not have this condition")
+
+# Filtering criteria No. 3
+## Include only samples that have reported not having any of the following diseases
+AGP_healthy_subset_3 <- AGP_healthy_subset %>%
+  filter(antibiotic_history=="I have not taken antibiotics in the past year." & 
+         diabetes=="I do not have this condition" & 
+         ibd=="I do not have this condition" &
+         ibs=="I do not have this condition" &
+         cdiff=="I do not have this condition" & 
+         cancer=="I do not have this condition" &
+         mental_illness=="No" &
+         mental_illness_type_substance_abuse=="false" &
+         mental_illness_type_depression=="false" &
+         asd=="I do not have this condition" &
+         alzheimers=="I do not have this condition" &
+         add_adhd=="I do not have this condition" &
+         epilepsy_or_seizure_disorder=="I do not have this condition" &
+         sibo=="I do not have this condition" &   # small intestinal bacterial overgrowth
+         pku =="I do not have this condition" &   # phenylketonuria
+         thyroid=="I do not have this condition" &
+         kidney_disease=="I do not have this condition" &
+         clinical_condition=="I do not have this condition" &
+         acid_reflux=="I do not have this condition" &
+         autoimmune=="I do not have this condition" &
+         cardiovascular_disease=="I do not have this condition" &
+         lung_disease =="I do not have this condition" &
+         liver_disease =="I do not have this condition")
+
+# Number of samples after filtering only by criteria reported by AGP paper
+nrow(AGP_healthy_subset_1)  #2292
+
+# Number of samples without IBD, IBS, Cdiff and no antibiotic use
+nrow(AGP_healthy_subset_2)  #1494
+
+# Number of samples without any reported clinical condition
+nrow(AGP_healthy_subset_3)  #600
+```
+First subset of data filtered only by criteria from AGP paper contains `r nrow(AGP_healthy_subset_1)` samples.
+Second subset of data filtered by criteria from paper with additionally filtered out IBS and Cdiff positive samples contain `r nrow(AGP_healthy_subset_2)` samples.
+Finally, the third subset that consists of samples with none reported diseases contains `r nrow(AGP_healthy_subset_3)` samples.
+
+Lets see if there is a difference in values of alpha diversity metrics in different subsets:
+
+```{r}
+# make tables of summaries of all 4 subsets of AGP data
+tabs <- list()
+subsets <- list(AGP_healthy_subset, AGP_healthy_subset_1, AGP_healthy_subset_2, AGP_healthy_subset_3)
+
+for(x in 1:length(subsets)){
+tabs[[x]] <- subsets[[x]] %>% 
+  summarise(shannon_entropy,
+            chao1,
+            menhinick,
+            margalef,
+            simpson,
+            pielou_evenness,
+            #inverse_simpson,
+            fisher_alpha,
+            gini_index,
+            strong,
+            faith_pd) %>% 
+  broom::tidy()
+}
+
+# Extract minimums, means and maximums of each metric and combine them in new tables
+cols <- c("column", "mean", "min", "max")
+metric <- c("shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness", "faith_pd" )
+alpha_tables <- list()
+
+for (i in 1:length(metric)){
+  alpha_tables[[i]] <- tibble()
+  for (x in tabs){
+    alpha_tables[[i]] <- bind_rows(alpha_tables[[i]], filter(x, column == metric[[i]]))
+  }
+  alpha_tables[[i]] <- alpha_tables[[i]][, names(alpha_tables[[i]]) %in% cols]
+  alpha_tables[[i]] <- alpha_tables[[i]] %>% add_column(subsample = c("AGP fecal samples of participants aged 20-69", "healthy AGP participants without any reported disease", "healthy AGP participants (AGP paper criteria)", "healthy AGP participants (no IBD, IBS, Cdiff + no antibiotics)"), .before = "column") 
+}
+
+all_alpha_tables<- tibble()
+for(x in 1:length(alpha_tables)){
+  all_alpha_tables <- bind_rows(all_alpha_tables, alpha_tables[[x]])
+}
+```
+
+```{r}
+# Plot values of min, mean and max for each subset of AGP data
+all_alpha_tables %>%
+  ggplot(aes(x= min, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5)
+
+all_alpha_tables %>%
+  ggplot(aes(x= mean, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5)
+
+all_alpha_tables %>%
+  ggplot(aes(x= max, y=subsample)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust=1)) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 35))+
+  facet_wrap(column ~ ., scales = "free_x", ncol=5) 
+
+```
+
+Group of healthy AGP participants without any reported disease has the highest 
+minimums and means of all alpha diversity indexes except from Gini's and Strong's 
+that have the lowest mean.
+
+Lets explore how distributions of different metrics change in different subsets:
+
+Generate a vector of 10 random colors for histograms:
+
+```{r}
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+colors <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+```
+
+```{r}
+subset_list <- list(AGP_healthy_subset, AGP_healthy_subset_1, AGP_healthy_subset_2, AGP_healthy_subset_3)
+subset_names <- c("AGP_healthy_subset", "AGP_healthy_subset_1", "AGP_healthy_subset_2", "AGP_healthy_subset_3")
+subset_list <- setNames(subset_list, subset_names)
+
+histo <- vector('list', length(subset_list)*length(metric))
+
+for (i in 1:length(metric)){
+  for (j in 1:length(subset_list)){
+    histo[[i]][[j]] <- subset_list[[j]] %>% ggplot(aes(x = .data[[metric[i]]])) +
+      geom_histogram(aes(y=..density..), colour="black", fill="white", bins=30)+
+      geom_density(alpha=.2, fill=colors[i]) +
+      geom_vline(aes(xintercept = mean(.data[[metric[i]]]), colour = "red", linetype = "dashed"))+ 
+      xlab(label = paste(names(subset_list[j]),"(n =", nrow(subset_list[[j]]), ")", sep=' ')) + 
+      ylab(label ="density")+
+      theme(legend.position="none") 
+  }
+}
+
+plot_list <- list()
+for (i in 1:length(metric)){
+  plot_list[[i]] <- list()
+  for (j in 1:length(subset_list)){
+    plot_list[[i]][[j]] <- histo[[i]][[j]]
+  }
+}
+
+
+for (i in 1:length(metric)){
+  grid.arrange(grobs = plot_list[[i]], ncol=2, top = textGrob(paste ("Density distributions of data in different subsets (different filtering criteria) for alpha metric:", metric[i], sep =" "), gp=gpar(fontsize=10,font=2)))
+}
+```
+
+For now lets use the subset of healthy samples that only excludes IBD, IBS, Cdiff and antibiotic use (since these are the conditions that will be our disease group in further analysis):
+
+```{r}
+AGP_healthy_subset <- AGP_healthy_subset_2
+
+nrow(AGP_healthy_subset)
+```
+
+There is `r nrow(AGP_healthy_subset)` healthy samples.
+
+One of the things we are interested in is the nutrition of study participants.
+AGP supposedly incorporates data from Vioscreen questionaire about nutrition habits.
+Let's examine those columns:
+
+```{r}
+# Examine Vioscreen data columns
+cols <- grep("^vioscreen.?", names(AGP_healthy_subset), value=T)
+
+# Show unique values in each of the vioscreen columns
+#lapply(AGP_healthy_subset[,cols], unique)
+```
+
+Vioscreen columns are highly redundand (empty). Furthermore, only available 
+values for vioscreen columns are: "" and "not applicable". We can delete 
+vioscreen columns from the table AGP_healthy_subset because they are not 
+informative:
+
+```{r}
+# Delete vioscreen columns
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+```
+
+Delete columns that are not informative enough, for example mostly empty, mostly 
+consisting of 'Unspecified' answer or uniform (only have one category, so useless 
+for comparisons):
+
+```{r}
+# Delete almost empty columns (missing more than 90% of the samples)
+empty_columns <- colSums(is.na(AGP_healthy_subset) | AGP_healthy_subset == "") > nrow(AGP_healthy_subset)*0.9
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% empty_columns]
+
+# Delete columns that have more than 80% Uncpecified answers
+unspec_columns <- colSums(AGP_healthy_subset == "Unspecified" | AGP_healthy_subset == "") > nrow(AGP_healthy_subset)*0.8
+AGP_healthy_subset <- AGP_healthy_subset[, !unspec_columns]
+
+#Delete columns with uniform values (all values are the same)
+uniform_columns <- vapply(AGP_healthy_subset, function(x) length(unique(x)) == 1, logical(1L))
+AGP_healthy_subset <- AGP_healthy_subset[, !uniform_columns]
+```
+
+Furthermore, we are not interested in examining effects of Covid or surfing on 
+gut microbiome so we are going to delete these columns:
+
+```{r}
+# Delete covid related columns
+cols <- grep("^covid?", names(AGP_healthy_subset), value=T)
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+
+# Delete columns related to surfing data
+cols <- grep("^surf_.?", names(AGP_healthy_subset), value=T)
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+```
+
+Other redundand columns:
+
+* host_age_units - in years for all samples
+* host_age_normalized_years is the same as host_age, 
+* host_subject_id and anonymized_name - we already have sample identifiers 
+* (sample_name), we don't need subject ID since we don't need to identify subjects 
+* roommates_in_study - irrelevant since we can't identify them, 
+* toilet_water_access - irrelevant
+* collection_timestamp - irrelevant
+
+```{r}
+# Delete columns
+cols <- c('host_age_units', 'host_age_normalized_years', 'host_subject_id', 'roommates_in_study', 'toilet_water_access', 'anonymized_name', 'collection_timestamp')
+AGP_healthy_subset <- AGP_healthy_subset[, !names(AGP_healthy_subset) %in% cols]
+
+ncol(AGP_healthy_subset) 
+
+#colnames(AGP_healthy_subset)
+```
+
+We are left with `r ncol(AGP_healthy_subset)` columns relating to participants' 
+nutrition habits, allergies, physical activity, cohabitation etc.
+
+Check other columns of interest
+```{r}
+table(AGP_healthy_subset$sex)
+# cathegories: female, male, other, unspecified
+
+# Delete other and unspecified
+AGP_healthy_subset <- AGP_healthy_subset %>%
+  filter(sex=="female" | sex=="male")
+
+# table(AGP_healthy_subset$bmi_cat)
+# # cathegories: Normal, Unspecified  
+# 
+# # Delete Unspecified
+# AGP_healthy_subset <- AGP_healthy_subset %>%
+#   filter(bmi_cat !="Unspecified")
+```
+
+```{r}
+nrow(AGP)
+nrow(AGP_healthy_subset)
+
+table(AGP_healthy_subset$bmi_cat)
+```
+
+Export table into csv format:
+
+```{r}
+write.csv(AGP, gzfile(here("01_tidy_data", "AGP_all.csv.gz")), row.names=FALSE)
+write.csv(AGP_healthy_subset, gzfile(here("01_tidy_data", "AGP_healthy.csv.gz")), row.names=FALSE)
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References

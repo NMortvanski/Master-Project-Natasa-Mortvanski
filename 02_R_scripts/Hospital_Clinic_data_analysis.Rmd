@@ -1,0 +1,289 @@
+---
+title: "CDI_hospital_data"
+author: "Natasa Mortvanski"
+date: "2023-03-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Compare Hospital Clinic's data with other datasets
+
+Loading libraries:
+
+```{r}
+#install.packages("readr")
+library("readr")
+#install.packages('data.table')
+library(data.table)
+library(stringr)
+#install.packages('ggplot2')
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(plyr)
+library(purrr)
+library(dplyr)
+#install.packages('flextable')
+library(flextable)
+library(tibble)
+library(ComplexHeatmap)
+library(RColorBrewer)
+library(ggplotify)
+library(here)
+```
+
+Load *healthy subsample of AGP* data: 
+
+```{r}
+# Load all AGP data
+AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
+
+# Load healthy samples' table
+all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRUE, sep = ",")
+
+all_healthy <- dplyr::select(all_healthy, sample_id, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, pielou_evenness, gini_index, strong, simpson, faith_pd, sex, race, host_age)
+
+all_healthy$condition <- 'healthy'
+all_healthy$qiita_study_id <- AGP$qiita_study_id[match(all_healthy$sample_id, AGP$sample_id)]
+
+names(all_healthy)[names(all_healthy) == 'host_age'] <- 'age'
+
+all_IBD <- read.csv(here("01_tidy_data", "IBD.csv.gz"), header = TRUE, sep = ",")
+CD_2 <- read.csv(here("01_tidy_data", "CD_2.csv.gz"), header = TRUE, sep = ",")
+
+hospital_CDI <- read.csv(here("01_tidy_data", "hosp_CDI.csv.gz"), header = TRUE, sep = ",")
+```
+
+Now, lets merge all data sets with IBD and AGP as control:
+
+```{r}
+CD_2_merge <- CD_2 %>%
+  filter(condition != "not applicable")
+
+CD_2_merge$condition[CD_2_merge$condition=="control"] <- "healthy"
+CD_2_merge$condition[CD_2_merge$condition=="crohns"] <- "CD"
+
+healthy_disease <- rbind.fill(all_healthy, all_IBD, CD_2_merge)
+
+healthy_disease$condition <- as.factor(healthy_disease$condition)
+healthy_disease$condition <- relevel(healthy_disease$condition, "healthy")
+
+# Sizes of each dataset
+table(healthy_disease$condition)
+```
+
+Let's define vector of names of the alpha diversity metrics that are going to be analysed:
+
+```{r}
+metric <- c("chao1", "margalef", "menhinick", "fisher_alpha", "faith_pd", "gini_index", "strong", "pielou_evenness", "shannon_entropy", "simpson") 
+```
+
+Let's define function for plotting violin plots that we are going to use in the whole analysis:
+
+```{r}
+plot_violin <- function(df, column){
+  violin <- vector('list', length(metric))
+  
+  for (i in 1:length(metric)){
+    mean_line <- df %>% dplyr::group_by(.data[[column]]) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
+    plot_data <- df %>% dplyr::group_by(.data[[column]]) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+  
+    violin[[i]] <- plot_data %>% ggplot(aes(x = .data[[metric[i]]], y = reorder(.data[[column]], -m), color = .data[[column]], fill = .data[[column]])) +
+      geom_violin()+
+      geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+      geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[column]]), linetype = "dashed")+ 
+      labs(x = metric[i])+
+      ylab("")+
+      theme(legend.position="none") 
+    
+    if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
+     violin[[i]] <- violin[[i]] + 
+       scale_x_continuous(trans = 'log10') +
+       xlab(paste(metric[i], "(log10)", sep = " ")) 
+    }
+  }
+  return(violin)
+}
+```
+
+First lets see the difference in alpha diversity in relation to the day of sampling (time since/before FMT):
+
+```{r}
+table(hospital_CDI$day_since_fmt)
+hospital_CDI$day_since_fmt <- as.factor(hospital_CDI$day_since_fmt)
+
+for (n in 1:nrow(hospital_CDI)){
+  hospital_CDI$subject[n] <- read.table(text = hospital_CDI$sample_id[n], sep = "-", as.is = TRUE)$V1
+}
+```
+
+```{r}
+progression_hospital <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+  progression_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], group=subject)) +
+    geom_line(aes(color=subject))+
+    geom_point(aes(color=subject))+
+    facet_wrap(dplyr::vars(hospital_CDI$subject), scale="free", ncol=5)
+}
+
+progression_hospital
+```
+
+```{r}
+violin_hospital <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+  mean_line <- hospital_CDI %>% dplyr::group_by(day_since_fmt) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
+
+  violin_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x = .data[[metric[i]]], y = day_since_fmt, color = day_since_fmt, fill = day_since_fmt)) +
+    geom_violin()+
+    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = day_since_fmt), linetype = "dashed")+ 
+    labs(x = metric[i])+
+    ylab("") 
+  
+  if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
+   violin_hospital[[i]] <- violin_hospital[[i]] + 
+     scale_x_continuous(trans = 'log10') +
+     xlab(paste(metric[i], "(log10)", sep = " ")) 
+  }
+}
+
+violin_hospital
+```
+
+
+```{r}
+hospital_CDI_2 <- hospital_CDI
+levels(hospital_CDI_2$day_since_fmt) <- list("pre-FMT" = "-10", "pre-FMT" = "-1", "post-FMT" = "2", "post-FMT" = "5", "post-FMT" = "7", "post-FMT" = "30", "post-FMT" = "90" )
+table(hospital_CDI_2$day_since_fmt)
+```
+
+```{r}
+violin_hospital_2 <- vector('list', length(metric))
+
+violin_hospital_2 <- plot_violin(hospital_CDI_2, "day_since_fmt")
+
+violin_hospital_2
+```
+
+Lets see how alpha diversity of CDI data from Hospital Clinic diverge from data from previous analysis:
+
+```{r}
+hospital_CDI_pre_FMT <- hospital_CDI_2 %>%
+  filter(day_since_fmt == "pre-FMT")
+
+hospital_CDI_pre_FMT$condition[hospital_CDI_pre_FMT$condition == "Cdif"] <- "hospital_Cdif"
+
+compare_hospital <- rbind.fill(healthy_disease, hospital_CDI_pre_FMT)
+
+# Sizes of each dataset
+table(compare_hospital$condition)
+```
+
+```{r}
+violin_compare <- vector('list', length(metric))
+
+violin_compare <- plot_violin(compare_hospital, "condition")
+
+violin_compare
+```
+
+## Taxonomy 
+
+From tutorial: https://uw-madison-microbiome-hub.github.io/Microbiome_analysis_in-_R/
+
+```{r}
+#BiocManager::install("phyloseq")
+library(phyloseq)
+
+# Importing ASVs abundance file
+ASVs <- read_qza(here("00_raw_data/07_hospital_CDI","table.qza"))
+# Importing metadata
+metadata <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv.gz"))
+# Importing tree
+tree <- read_qza("rooted-tree.qza")
+# Importing taxonomy
+taxonomy <- read_qza("taxonomy.qza")
+tax_table <- do.call(rbind, strsplit(as.character(taxonomy$data$Taxon), "; "))
+colnames(tax_table) <- c("Kingdom","Phylum","Class","Order","Family","Genus","Species")
+rownames(tax_table) <- taxonomy$data$Feature.ID
+
+# Creating phyloseq object
+physeq <- phyloseq(
+  otu_table(ASVs$data, taxa_are_rows = T),
+  phy_tree(tree$data),
+  tax_table(tax_table),
+  sample_data(metadata)
+)
+```
+
+```{r}
+# check for features of data  
+summarize_phyloseq(physeq)
+print_ps(physeq)
+summary(sample_sums(physeq))
+```
+
+```{r}
+ntaxa(physeq)
+
+nsamples(physeq)
+
+sample_names(physeq)[1:5]  
+
+rank_names(physeq)  
+
+sample_variables(physeq)  
+
+otu_table(physeq)[1:5, 1:5]  
+
+tax_table(physeq)[1:5, 1:4]
+```
+
+```{r}
+#Distribution of reads
+plot_read_distribution(physeq, groups = "BodySite", plot.type = "density") + theme_biome_utils()
+
+#Rarefy the phyloseq object to even depth prior various analysis
+physeq_rarefy <- rarefy_even_depth(physeq, rngseed=1, sample.size=0.9*min(sample_sums(physeq)), replace=F)
+
+#Check the taxa prevalence at Phylum level
+plot_taxa_prevalence(physeq, "Phylum")
+```
+
+Barplots are a one way of visualising the composition of your samples. At Family level and relative abundance
+
+```{r}
+physeq_fam <- microbiome::aggregate_rare(physeq, level = "Family", detection = 50/100, prevalence = 70/100)
+
+# Alternative
+physeq_fam <- aggregate_top_taxa2(physeq, level = "Family", top = 25)
+
+physeq.fam.rel <- microbiome::transform(physeq_fam, "compositional")
+
+physeq.fam.rel <- physeq %>%
+  aggregate_rare(level = "Family", detection = 50/100, prevalence = 70/100) %>%
+  microbiome::transform(transform = "compositional")
+
+plot_composition(physeq.fam.rel,sample.sort = "BodySite", x.label = "SampleID") + theme(legend.position = "bottom") + scale_fill_brewer("Family", palette = "Paired") + theme_bw() + theme(axis.text.x = element_text(angle = 90)) + ggtitle("Relative abundance") + theme(legend.title = element_text(size = 18))
+```
+
+Another option fot barplots:
+
+```{r}
+taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite")
+
+# To make it interactive
+ggplotly(taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite"))
+
+# save the plot
+b.plot <- taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite")
+
+ggsave("barplot_family.png", b.plot,  width = 14, height = 10, dpi = 300)
+```
+

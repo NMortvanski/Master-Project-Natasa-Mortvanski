@@ -1,0 +1,504 @@
+---
+title: "Disease_data_preparation"
+author: "Natasa Mortvanski"
+date: "2023-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Disease data preprocessing
+
+Loading necessary libraries:
+
+```{r}
+library(dplyr)
+#install.packages('purrr')
+library(purrr)
+library(tibble)
+library(ggplot2)
+library(stringr)
+library(RColorBrewer)
+library(gridExtra)
+library(grid)
+#install.packages("here")
+library(here)
+```
+
+### About datasets
+
+Following studies will be used as source of samples (from American donors) of different pathological conditions that affect alpha diversity:
+
+[1.](#ibd-datasets) Multi-omics of the gut microbial ecosystem in inflammatory bowel diseases, [dataset link](https://qiita.ucsd.edu/study/description/11484) 
+
+[2.](#ibd-datasets) Metaomics Reveals Microbiome Based Proteolysis as a Driver of Ulcerative Colitis Severity, [dataset link](https://qiita.ucsd.edu/study/description/11549)
+
+[3.](#longitudinal-chron's-disease-study) Guiding longitudinal sampling in inflammatory bowel diseases cohorts -> [dataset link](https://qiita.ucsd.edu/study/description/2538#)
+
+[4.](#cdi-samples) Gut microbiome predictors of treatment response and recurrence in primary Clostridium difficile infection -> study accession: PRJNA342347
+
+[5.](#changes-following-fecal-microbial-transplantation-for-recurrent-cdi) Dynamic changes in short- and long-term bacterial composition following fecal microbiota transplantation for recurrent Clostridium difficile infection -> [dataset link](https://qiita.ucsd.edu/study/description/1924)
+
+[6.](#fecal-transplantation-ibd-and-cdi-dataset) Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> [dataset link](https://qiita.ucsd.edu/study/description/10057)
+
+[7.](#hospital-clinic's-cdi-samples) Dataset of Hospital Clinic's CDI patients' samples pre and post fecal microbiome transplantation 
+
+All studies' data and metadata is available on Qiita platform.
+
+## IBD datasets
+
+Lets upload first study related to Inflammatory bowel disease (Ulcerative colitis and Crohn's disease):
+
+```{r}
+# Load metadata
+IBD_meta_all <- read.delim(here("00_raw_data/02_IBD", "sample_information_IBD_1.tsv.gz"))  
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_IBD <- read.delim(here("00_raw_data/02_IBD", "shannon_IBD_1.tsv.gz"))
+chao1_IBD <- read.delim(here("00_raw_data/02_IBD", "chao1_IBD_1.tsv.gz"))
+fisher_IBD <- read.delim(here("00_raw_data/02_IBD", "fisher_IBD_1.tsv.gz"))
+margalef_IBD <- read.delim(here("00_raw_data/02_IBD", "margalef_IBD_1.tsv.gz"))
+simpson_IBD <- read.delim(here("00_raw_data/02_IBD", "simpson_IBD_1.tsv.gz"))
+gini_IBD <- read.delim(here("00_raw_data/02_IBD", "gini_IBD_1.tsv.gz"))
+menhinick_IBD <- read.delim(here("00_raw_data/02_IBD", "menhinick_IBD_1.tsv.gz"))
+strong_IBD <- read.delim(here("00_raw_data/02_IBD", "strong_IBD_1.tsv.gz"))
+faith_IBD <- read.delim(here("00_raw_data/02_IBD", "faith_IBD_1.tsv.gz"))
+pielou_IBD <- read.delim(here("00_raw_data/02_IBD", "pielou_IBD_1.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+IBD_meta <- dplyr::select(IBD_meta_all, sample_id, sex, race, consent_age, age_at_diagnosis, diagnosis, qiita_study_id)
+names(IBD_meta)[names(IBD_meta) == 'diagnosis'] <- 'condition'
+names(IBD_meta)[names(IBD_meta) == 'consent_age'] <- 'age'
+IBD_meta[IBD_meta == "White"] <-'Caucasian'
+
+IBD_meta <- IBD_meta %>%
+  filter(age > 20 & age < 69)
+
+IBD_meta$sample_id <- str_replace(IBD_meta$sample_id, "^.*?\\.", "")
+
+
+# Merge alpha diversity dataframes
+names(faith_IBD)[names(faith_IBD) == 'X.SampleID'] <- 'X'
+
+all_IBD_alpha <- list(shannon_IBD, chao1_IBD, menhinick_IBD, margalef_IBD, fisher_IBD, gini_IBD, strong_IBD, simpson_IBD, faith_IBD, pielou_IBD) 
+all_IBD_alpha <- all_IBD_alpha %>% reduce(inner_join, by="X")
+names(all_IBD_alpha)[names(all_IBD_alpha) == 'X'] <- 'sample_id'
+
+all_IBD_alpha$sample_id <- str_replace(all_IBD_alpha$sample_id, "^.*?\\.", "")
+
+
+# Merge alpha metrics' dataframe with metadata
+IBD <- all_IBD_alpha %>% left_join(IBD_meta, by=c('sample_id' = 'sample_id'))
+IBD <- IBD[complete.cases(IBD),]
+
+nrow(IBD)
+```
+
+After filtering we are left with `r nrow(IBD)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .csv.gz file:
+```{r}
+write.csv(IBD, gzfile(here("01_tidy_data", "IBD.csv.gz")), row.names=FALSE)
+```
+
+### UC samples
+
+Lets upload second study related to Inflammatory bowel disease (Ulcerative colitis):
+
+```{r}
+# Load metadata
+UC_meta_all <- read.delim(here("00_raw_data/02_IBD", "sample_information_UC_1.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_UC <- read.delim(here("00_raw_data/02_IBD", "shannon_UC_1.tsv.gz"))
+chao1_UC <- read.delim(here("00_raw_data/02_IBD", "chao1_UC_1.tsv.gz"))
+fisher_UC <- read.delim(here("00_raw_data/02_IBD", "fisher_UC_1.tsv.gz"))
+margalef_UC <- read.delim(here("00_raw_data/02_IBD", "margalef_UC_1.tsv.gz"))
+simpson_UC <- read.delim(here("00_raw_data/02_IBD", "simpson_UC_1.tsv.gz"))
+gini_UC <- read.delim(here("00_raw_data/02_IBD", "gini_UC_1.tsv.gz"))
+menhinick_UC <- read.delim(here("00_raw_data/02_IBD", "menhinick_UC_1.tsv.gz"))
+strong_UC <- read.delim(here("00_raw_data/02_IBD", "strong_UC_1.tsv.gz"))
+faith_UC <- read.delim(here("00_raw_data/02_IBD", "faith_UC_1.tsv.gz"))
+pielou_UC <- read.delim(here("00_raw_data/02_IBD", "pielou_UC_1.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+UC_meta <- dplyr::select(UC_meta_all, sample_id, sex, race, age, age_diagnosis, disease, qiita_study_id)
+names(UC_meta)[names(UC_meta) == 'disease'] <- 'condition'
+names(UC_meta)[names(UC_meta) == 'age_diagnosis'] <- 'age_at_diagnosis'
+UC_meta[UC_meta == "F"] <- 'female'
+UC_meta[UC_meta == "M"] <- 'male'
+
+UC_meta <- UC_meta %>%
+  filter(age > 20 & age < 69)
+
+UC_meta$sample_id <- str_replace(UC_meta$sample_id, "^.*?\\.", "")
+
+
+# Merge alpha diversity dataframes
+names(faith_UC)[names(faith_UC) == 'X.SampleID'] <- 'X'
+
+all_UC_alpha <- list(shannon_UC, chao1_UC, menhinick_UC, margalef_UC, fisher_UC, gini_UC, strong_UC, simpson_UC, faith_UC, pielou_UC) 
+all_UC_alpha <- all_UC_alpha %>% reduce(inner_join, by="X")
+names(all_UC_alpha)[names(all_UC_alpha) == 'X'] <- 'sample_id'
+
+all_UC_alpha$sample_id <- str_replace(all_UC_alpha$sample_id, "^.*?\\.", "")
+
+
+# Merge alpha metrics' dataframe with metadata
+UC <- all_UC_alpha %>% left_join(UC_meta, by=c('sample_id' = 'sample_id'))
+UC <- UC[complete.cases(UC),]
+
+
+nrow(UC)
+```
+
+After filtering we are left with `r nrow(UC)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .csv.gz file
+```{r}
+write.csv(UC, gzfile(here("01_tidy_data", "UC.csv.gz")), row.names=FALSE)
+```
+
+## Longitudinal Chron's disease study
+
+Lets upload data from the longitudinal study related to Crohn's disease:
+
+```{r}
+# Load metadata
+CD_2_all <- read.delim(here("00_raw_data/03_CD_longitudinal", "sample_information_CD_2.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_shannon.tsv.gz"))
+chao1_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_chao1.tsv.gz"))
+fisher_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_fisher.tsv.gz"))
+margalef_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_margalef.tsv.gz"))
+simpson_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_simpson.tsv.gz"))
+gini_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_gini.tsv.gz"))
+menhinick_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_menhinick.tsv.gz"))
+strong_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_strong.tsv.gz"))
+faith_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_faith.tsv.gz"))
+pielou_CD_2 <- read.delim(here("00_raw_data/03_CD_longitudinal", "CD_2_pielou.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+CD_2_meta <- dplyr::select(CD_2_all, sample_name, sex, age, description, sample_type, weeks, env_package, ibd, surgery_and_ibd, surgery_type, qiita_study_id)
+
+names(CD_2_meta)[names(CD_2_meta) == 'sample_name'] <- 'sample_id'
+names(CD_2_meta)[names(CD_2_meta) == 'ibd'] <- 'condition'
+
+CD_2_meta <- CD_2_meta %>%
+  filter(age > 20 & age < 69) %>%
+  filter(sample_type == "feces")
+
+
+# Merge alpha diversity data frames
+names(faith_CD_2)[names(faith_CD_2) == 'X.SampleID'] <- 'X'
+
+all_CD_2_alpha <- list(shannon_CD_2, chao1_CD_2, fisher_CD_2, margalef_CD_2, gini_CD_2, menhinick_CD_2, strong_CD_2, simpson_CD_2, faith_CD_2, pielou_CD_2)
+all_CD_2_alpha <- all_CD_2_alpha %>% reduce(inner_join, by="X")
+
+names(all_CD_2_alpha)[names(all_CD_2_alpha) == 'X'] <- 'sample_id'
+
+
+# Merge alpha metrics' data frame with metadata
+CD_2 <- all_CD_2_alpha %>% left_join(CD_2_meta, by=c('sample_id' = 'sample_id'))
+CD_2 <- CD_2[complete.cases(CD_2),]
+
+
+table(CD_2$description, CD_2$condition)
+
+nrow(CD_2)
+```
+
+After filtering we are left with `r nrow(all_CD_2)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .tsv.gz file:
+
+```{r}
+write.csv(CD_2, gzfile(here("01_tidy_data", "CD_2.csv.gz")), row.names=FALSE)
+```
+
+## CDI samples 
+
+```{r}
+# Load metadata
+CDI_meta_all <- read.delim(here("00_raw_data/06_CDI_ncbi", "sample_metadata_ncbi_CDI.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "shannon_ncbi_CDI.tsv.gz"))
+chao1_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "chao1_ncbi_CDI.tsv.gz"))
+fisher_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "fisher_ncbi_CDI.tsv.gz"))
+margalef_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "margalef_ncbi_CDI.tsv.gz"))
+simpson_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "simpson_ncbi_CDI.tsv.gz"))
+gini_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "gini_ncbi_CDI.tsv.gz"))
+menhinick_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "menhinick_ncbi_CDI.tsv.gz"))
+strong_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "strong_ncbi_CDI.tsv.gz"))
+faith_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "faith_ncbi_CDI.tsv.gz"))
+pielou_ncbi_CDI <- read.delim(here("00_raw_data/06_CDI_ncbi", "pielou_ncbi_CDI.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+CDI_meta <- dplyr::select(CDI_meta_all, sample.id, Age_.years., BMI_.Kg.M2., PPI_use_.0.No_1.Yes.,  Sex_.0.Male_1.Female., Prior_antibiotics_.0.No_1.Yes., Response_to_treatment_.0.success_1.failure., Recurrence_.0.No_1.Yes., SevereCDI_.0.No_1.Yes.)
+
+names(CDI_meta)[names(CDI_meta) == 'sample.id'] <- 'sample_id'
+names(CDI_meta)[names(CDI_meta) == 'Age_.years.'] <- 'age'
+names(CDI_meta)[names(CDI_meta) == 'BMI_.Kg.M2.'] <- 'BMI'
+names(CDI_meta)[names(CDI_meta) == 'PPI_use_.0.No_1.Yes.'] <- 'PPI_use'
+names(CDI_meta)[names(CDI_meta) == 'Sex_.0.Male_1.Female.'] <- 'sex'
+names(CDI_meta)[names(CDI_meta) == 'Prior_antibiotics_.0.No_1.Yes.'] <- 'prior_antibiotics'
+names(CDI_meta)[names(CDI_meta) == 'Response_to_treatment_.0.success_1.failure.'] <- 'response_to_treatment'
+names(CDI_meta)[names(CDI_meta) == 'Recurrence_.0.No_1.Yes.'] <- 'recurrence'
+names(CDI_meta)[names(CDI_meta) == 'SevereCDI_.0.No_1.Yes.'] <- 'severe_CDI'
+
+CDI_meta <- data.frame(lapply(CDI_meta, as.character), stringsAsFactors=FALSE)
+CDI_meta$age <- as.numeric(CDI_meta$age)
+CDI_meta$BMI <- as.numeric(CDI_meta$BMI)
+
+CDI_meta <- CDI_meta %>%
+    mutate( across(.cols = c(PPI_use, prior_antibiotics, recurrence, severe_CDI),
+                  ~str_replace( ., "0", "No"))) %>%
+    mutate(across(.cols = c(PPI_use, prior_antibiotics, recurrence, severe_CDI),
+                  ~str_replace( ., "1", "Yes")))
+
+CDI_meta <- CDI_meta %>%
+    mutate( sex = str_replace( sex, "0", "Male")) %>%
+    mutate( sex = str_replace( sex, "1", "Female"))%>%
+    mutate( response_to_treatment = str_replace( response_to_treatment, "0", "success")) %>%
+    mutate( response_to_treatment = str_replace( response_to_treatment, "1", "failure"))
+
+CDI_meta <- CDI_meta %>%
+  filter(age > 20 & age < 69)
+
+
+# Merge alpha diversity data frames
+all_ncbi_CDI_alpha <- list(shannon_ncbi_CDI, chao1_ncbi_CDI, fisher_ncbi_CDI, margalef_ncbi_CDI, gini_ncbi_CDI, menhinick_ncbi_CDI, strong_ncbi_CDI, simpson_ncbi_CDI, faith_ncbi_CDI, pielou_ncbi_CDI) 
+all_ncbi_CDI_alpha <- all_ncbi_CDI_alpha %>% reduce(inner_join, by="X")
+names(all_ncbi_CDI_alpha)[names(all_ncbi_CDI_alpha) == 'X'] <- 'sample_id'
+
+
+# Merge alpha metrics' data frame with metadata
+ncbi_CDI <- all_ncbi_CDI_alpha %>% left_join(CDI_meta, by=c('sample_id' = 'sample_id'))
+ncbi_CDI <- ncbi_CDI[complete.cases(ncbi_CDI),]
+
+
+nrow(ncbi_CDI)
+```
+We have `r nrow(all_ncbi_CDI)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .tsv.gz file:
+
+```{r}
+write.csv(ncbi_CDI, gzfile(here("01_tidy_data", "ncbi_CDI.csv.gz")), row.names=FALSE)
+```
+
+
+# Changes following fecal microbial transplantation for recurrent CDI
+
+Lets load data from study about short- and long-term microbiome changes following FMT for recurrent C. difficile infection:
+
+```{r}
+# Load metadata
+CDI_FMT_all <- read.delim(here("00_raw_data/04_C_difficile", "sample_information_cdiff.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_shannon.tsv.gz"))
+chao1_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_chao1.tsv.gz"))
+fisher_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_fisher.tsv.gz"))
+margalef_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_margalef.tsv.gz"))
+simpson_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_simpson.tsv.gz"))
+gini_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_gini.tsv.gz"))
+menhinick_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_menhinick.tsv.gz"))
+strong_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_strong.tsv.gz"))
+pielou_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_pielou.tsv.gz"))
+faith_CDI_FMT <- read.delim(here("00_raw_data/04_C_difficile", "cdiff_faith.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+CDI_FMT_meta <- dplyr::select(CDI_FMT_all, sample_name, animations_subject, sex, race, host_age, host_body_mass_index, day_relative_to_fmt, disease_state, qiita_study_id)
+
+names(CDI_FMT_meta)[names(CDI_FMT_meta) == 'sample_name'] <- 'sample_id'
+names(CDI_FMT_meta)[names(CDI_FMT_meta) == 'host_age'] <- 'age'
+names(CDI_FMT_meta)[names(CDI_FMT_meta) == 'host_body_mass_index'] <- 'body_mass_index'
+names(CDI_FMT_meta)[names(CDI_FMT_meta) == 'day_relative_to_fmt'] <- 'day_since_fmt'
+
+CDI_FMT_meta <- CDI_FMT_meta %>%
+  filter(age > 20 & age < 69) %>%
+  filter(animations_subject != "Patient" & 
+         animations_subject != "Donor")
+
+
+# Merge alpha diversity data frames
+names(faith_CDI_FMT)[names(faith_CDI_FMT) == 'X.SampleID'] <- 'X'
+
+all_CDI_FMT_alpha <- list(shannon_CDI_FMT, chao1_CDI_FMT, fisher_CDI_FMT, margalef_CDI_FMT, gini_CDI_FMT, menhinick_CDI_FMT, strong_CDI_FMT, faith_CDI_FMT, simpson_CDI_FMT, pielou_CDI_FMT)   
+all_CDI_FMT_alpha <- all_CDI_FMT_alpha %>% reduce(inner_join, by="X")
+
+names(all_CDI_FMT_alpha)[names(all_CDI_FMT_alpha) == 'X'] <- 'sample_id'
+
+
+# Merge alpha metrics' data frame with metadata
+CDI_FMT <- all_CDI_FMT_alpha %>% left_join(CDI_FMT_meta, by=c('sample_id' = 'sample_id'))
+CDI_FMT <- CDI_FMT[complete.cases(CDI_FMT),]
+
+
+nrow(CDI_FMT)
+```
+
+After filtering we are left with `r nrow(CDI_FMT)` samples for which we have calculated all chosen alpha metrics.
+
+```{r}
+table(CDI_FMT$body_mass_index, CDI_FMT$animations_subject)
+```
+
+Subject CD1 has a BMI of 29.3;
+Subject CD2 has a BMI of 27.1;
+Subject CD3 has a BMI of 32.5;
+Subject CD4 has a BMI of 23.9.
+
+All except CD4 have BMI over 25 which is considered owerveight.
+For purpose of comparing improvement after FMT in these four subjects, we are not going to filter out based on BMI.
+Furthermore, this is not necessary because we wont compare these samples with healthy dataset.
+
+Export data frame into .tsv.gz file:
+```{r}
+write.csv(CDI_FMT, gzfile(here("01_tidy_data", "CDI_FMT.csv.gz")), row.names=FALSE)
+```
+
+Exported data frames are stored in 01_tidy_data directory of this project. They are going to be used for further statistical analysis.
+
+## Fecal transplantation IBD and CDI dataset
+
+Finally, lets load data from the study about effects of FMT (Fecal Microbiota Transplantation) for recurrent C. difficile infection with underlying inflammatory bowel disease:
+
+```{r}
+# Load metadata
+FMT_IBD_CDI_all <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "sample_information_tr_CDI_IBD.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_shannon.tsv.gz"))
+chao1_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_chao1.tsv.gz"))
+fisher_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_fisher.tsv.gz"))
+margalef_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_margalef.tsv.gz"))
+simpson_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_simpson.tsv.gz"))
+gini_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_gini.tsv.gz"))
+menhinick_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_menhinick.tsv.gz"))
+strong_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_strong.tsv.gz"))
+faith_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_faith.tsv.gz"))
+pielou_FMT_IBD_CDI <- read.delim(here("00_raw_data/05_FMT_CDI_and_IBD", "tr_IBD_CDI_pielou.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+FMT_IBD_CDI_meta <- dplyr::select(FMT_IBD_CDI_all, sample_name, animations_subject, sex, age, body_mass_index, pathology, day_since_fmt, donor_or_patient, qiita_study_id)
+
+names(FMT_IBD_CDI_meta)[names(FMT_IBD_CDI_meta) == 'pathology'] <- 'condition'
+names(FMT_IBD_CDI_meta)[names(FMT_IBD_CDI_meta) == 'sample_name'] <- 'sample_id'
+
+FMT_IBD_CDI_meta[FMT_IBD_CDI_meta == "Crohn's"] <-'CDI + CD'
+FMT_IBD_CDI_meta[FMT_IBD_CDI_meta == "microscopic colitis"] <-'CDI + MC'
+FMT_IBD_CDI_meta[FMT_IBD_CDI_meta == "Ulcerative colitis"] <-'CDI + UC'
+FMT_IBD_CDI_meta[FMT_IBD_CDI_meta == "no IBD"] <-'CDI'
+FMT_IBD_CDI_meta$condition[FMT_IBD_CDI_meta$condition == "Not applicable"] <-'Donors'
+
+FMT_IBD_CDI_meta <- FMT_IBD_CDI_meta %>%
+  filter(age > 20 & age < 69) %>%
+  filter(body_mass_index > 18.5 &
+         body_mass_index < 25)
+
+
+# Merge alpha diversity data frames
+names(faith_FMT_IBD_CDI)[names(faith_FMT_IBD_CDI) == 'X.SampleID'] <- 'X'
+
+all_FMT_IBD_CDI_alpha <- list(shannon_FMT_IBD_CDI, chao1_FMT_IBD_CDI, fisher_FMT_IBD_CDI, margalef_FMT_IBD_CDI, gini_FMT_IBD_CDI, menhinick_FMT_IBD_CDI, strong_FMT_IBD_CDI, simpson_FMT_IBD_CDI, faith_FMT_IBD_CDI, pielou_FMT_IBD_CDI) 
+all_FMT_IBD_CDI_alpha <- all_FMT_IBD_CDI_alpha %>% reduce(inner_join, by="X")
+
+names(all_FMT_IBD_CDI_alpha)[names(all_FMT_IBD_CDI_alpha) == 'X'] <- 'sample_id'
+
+
+# Merge alpha metrics' data frame with metadata
+FMT_IBD_CDI <- all_FMT_IBD_CDI_alpha %>% left_join(FMT_IBD_CDI_meta, by=c('sample_id' = 'sample_id'))
+FMT_IBD_CDI <- FMT_IBD_CDI[complete.cases(FMT_IBD_CDI),]
+
+
+nrow(FMT_IBD_CDI)
+```
+
+After filtering we are left with `r nrow(FMT_IBD_CDI)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .tsv.gz file:
+
+```{r}
+write.csv(FMT_IBD_CDI, gzfile(here("01_tidy_data", "FMT_IBD_CDI.csv.gz")), row.names=FALSE)
+```
+
+
+## Hospital dataset - CDI samples
+
+```{r}
+# Load metadata
+hosp_CDI_meta_all <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "shannon_hosp_CDI.tsv.gz"))
+chao1_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "chao1_hosp_CDI.tsv.gz"))
+fisher_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "fisher_hosp_CDI.tsv.gz"))
+margalef_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "margalef_hosp_CDI.tsv.gz"))
+simpson_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "simpson_hosp_CDI.tsv.gz"))
+gini_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "gini_hosp_CDI.tsv.gz"))
+menhinick_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "menhinick_hosp_CDI.tsv.gz"))
+strong_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "strong_hosp_CDI.tsv.gz"))
+faith_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "faith_hosp_CDI.tsv.gz"))
+pielou_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "pielou_hosp_CDI.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+hosp_CDI_meta <- dplyr::select(hosp_CDI_meta_all, Sample.ID, sample.origin, sex, age, time, CDItreatment.PREFMT, severeICD, Clinicalrecurrence)
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'Sample.ID'] <- 'sample_id'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'sample.origin'] <- 'condition'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'time'] <- 'day_since_fmt'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'CDItreatment.PREFMT'] <- 'antibiotic_use'
+names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'Clinicalrecurrence'] <- 'clinical_recurrence'
+
+hosp_CDI_meta <- hosp_CDI_meta %>%
+  filter(age > 20 & age < 69) %>%
+  filter(condition == "Cdif")
+
+
+# Merge alpha diversity data frames
+all_hosp_CDI_alpha <- list(shannon_hosp_CDI, chao1_hosp_CDI, fisher_hosp_CDI, margalef_hosp_CDI, gini_hosp_CDI, menhinick_hosp_CDI, strong_hosp_CDI, simpson_hosp_CDI, faith_hosp_CDI, pielou_hosp_CDI) 
+all_hosp_CDI_alpha <- all_hosp_CDI_alpha %>% reduce(inner_join, by="X")
+names(all_hosp_CDI_alpha)[names(all_hosp_CDI_alpha) == 'X'] <- 'sample_id'
+
+# Merge alpha metrics' data frame with metadata
+hosp_CDI <- all_hosp_CDI_alpha %>% left_join(hosp_CDI_meta, by=c('sample_id' = 'sample_id'))
+hosp_CDI <- hosp_CDI[complete.cases(hosp_CDI),]
+
+
+nrow(hosp_CDI)
+```
+We have `r nrow(hosp_CDI)` samples for which we have calculated all chosen alpha metrics.
+
+Export data frame into .tsv.gz file:
+
+```{r}
+write.csv(hosp_CDI, gzfile(here("01_tidy_data", "hosp_CDI.csv.gz")), row.names=FALSE)
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References
+

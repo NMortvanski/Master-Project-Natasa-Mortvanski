@@ -50,7 +50,7 @@ nrow(all_healthy)
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
 
 ```{r}
-metric <- c("menhinick", "margalef", "faith_pd", "chao1", "shannon_entropy", "fisher_alpha", "simpson", "gini_index", "strong", "pielou_evenness") 
+metric <- c("chao1", "margalef", "menhinick", "fisher_alpha", "faith_pd", "gini_index", "strong", "pielou_evenness", "shannon_entropy", "simpson") 
 ```
 
 Generate a vector of 10 random colors for histograms:
@@ -76,32 +76,66 @@ for (i in 1:length(metric)){
 grid.arrange(histo[[1]], histo[[2]],histo[[3]], histo[[4]],histo[[5]], histo[[6]],histo[[7]], histo[[8]],histo[[9]], histo[[10]], ncol=3, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in healthy dataset", gp=gpar(fontsize=10,font=2)))
 ```
 
-## Checking normality of the data (Anderson-Darling Test)
+### Testing for normality
+
+Shapiro-Wilk’s method is widely recommended for normality test and it provides better power than K-S. It is based on the correlation between the data and the corresponding normal scores.
 
 ```{r}
-pval_ad <- list()
-stat_ad <- list()
+pval_sp <- list()
+stat_sp <- list()
 
 for (i in 1:length(metric)){
-  pval_ad[i] <- ad.test(all_healthy[[metric[i]]])[2]
-  stat_ad[i] <- ad.test(all_healthy[[metric[i]]])[1]
+  pval_sp[i] <- shapiro.test(all_healthy[[metric[i]]])[2]
+  stat_sp[i] <- shapiro.test(all_healthy[[metric[i]]])[1]
 }
 
-stat_ad <- lapply(stat_ad, unname) %>% unlist(stat_ad)
-pval_ad <- unlist(pval_ad)
+stat_sp <- lapply(stat_sp, unname) %>% unlist(stat_sp)
+pval_sp <- unlist(pval_sp)
 
-table_anderson <- data.frame(metric=metric, statistic=stat_ad, p.value=pval_ad) 
-table_anderson$p.value <- round(table_anderson$p.value, digits = 3)
-table_anderson %>% 
-  arrange(desc(p.value)) %>%
+table_saphiro <- data.frame(metric=metric, statistic=stat_sp, p.value=pval_sp) 
+table_saphiro$p.value <- round(table_saphiro$p.value, digits = 4)
+
+skewness_list <- list()
+kurtosis_list <- list()
+
+for(i in 1:length(metric)){
+  #calculate skewness
+  sk <- skewness(all_healthy[[metric[i]]])
+  skewness_list <- append(skewness_list, sk)
+  #calculate kurtosis
+  kr <- kurtosis(all_healthy[[metric[i]]])
+  kurtosis_list <- append(kurtosis_list, kr)
+}
+
+table_saphiro$skewness <- unlist(skewness_list)
+table_saphiro$kurtosis <- unlist(kurtosis_list)
+
+table_saphiro %>% 
+  arrange(desc(statistic)) %>%
   flextable() %>%
-  add_header_lines(values = "Results of the Anderson-Darling Test of distribution normality")
+  add_header_lines(values = "Normality test (Shapiro-Wilk), skewness and kurtosis of different metrics")
 ```
 
-All of the alpha metrics have somewhat skewd distribution, but the ones that are closeest to normal distribution are:
-* faith_pd -> p-value: 0.0724
-* margalef -> p-value: 0.1575
-* menhinick -> p-value: 0.1575
+Normal distribution:
+* p-value > 0.05 for Shapiro-Wilk’s statistic
+* skewness = 0
+* kurtosis = 3
+
+Consclusion: none of the metrics follow perfect normal distribution. However, Faith PD, Menhinick and Margalef are closest to normality.
+
+### Finding distribution type
+
+```{r}
+#install.packages("fitdistrplus")
+library(fitdistrplus)
+
+for (i in 1:length(metric)){
+  descdist(healthy_disease[[metric[i]]], discrete = FALSE)
+}
+```
+
+the p-value < 0.05 implying that the distribution of the data are significantly different from normal distribution. 
+In other words, we cannot assume the normality for neither of the alpha metrics.
 
 ## Correlations
 
@@ -112,10 +146,8 @@ Most of the variables in metadata are categorical. Only few variables are numeri
 First lets check correlations between alpha diversity metrics:
 
 ```{r}
-library(corrplot)
-
-metrics <- all_healthy[,2:11]
-cor_matrix <- cor(metrics)
+only_metrics <- all_healthy[,2:11]
+cor_matrix <- cor(only_metrics, method = "spearman")
 
 #corrplot(cor_matrix, type = "upper", order = "hclust", addrect = 3, tl.col = "black", tl.srt = 45)
 
@@ -123,7 +155,7 @@ corrplot(cor_matrix, order = 'hclust', addrect = 3, tl.col = "black", tl.srt = 4
 ```
 
 ```{r}
-chart.Correlation(all_healthy[, 2:11], histogram=TRUE, pch=19)
+chart.Correlation(only_metrics, histogram=TRUE, pch=19)
 ```
 From this we can see that most of the alpha metrics are positively correlated except from Gini index and Strong's dominance index which are positively correlated among themselves and negatively correlated with the rest of the metrics.
 
@@ -132,8 +164,83 @@ We can also see three "blocks" of alpha metrics which are strongly positively co
 * second: Shannon's entropy, Simpson' index and Pielou's evenness, 
 * third: Gini index and Strong's dominance index.
 
+Lets see what happenes if we invert Gini index and Strong's dominance index:
 
-For numerical variables we can perform simple Pearson's correlation coefficient:
+```{r}
+metrics_invert <- only_metrics
+metrics_invert$gini_index <- 1/metrics_invert$gini_index
+metrics_invert$strong <- 1/metrics_invert$strong
+
+cor_matrix_invert <- cor(metrics_invert, method = "spearman")
+
+corrplot(cor_matrix_invert, order = 'hclust', addrect = 2, tl.col = "black", tl.srt = 45)
+```
+
+From this we can see that most of the alpha metrics are positively correlated except from Gini index and Strong's dominance index which are positively correlated among themselves and negatively correlated with the rest of the metrics.
+
+We can also see three "blocks" of alpha metrics which are strongly positively correlated - 
+* first: Chao1, Fisher's, Manhinick's richness index, Margalef' richness index and Faith's phylogenetic diversity, 
+* second: Shannon's entropy, Simpson' index and Pielou's evenness, 
+* third: Gini index and Strong's dominance index.
+
+Lets see what happens if we invert Gini index and Strong's dominance index:
+
+```{r}
+metrics_invert <- only_metrics
+metrics_invert$gini_index <- 1/metrics_invert$gini_index
+metrics_invert$strong <- 1/metrics_invert$strong
+
+cor_matrix_invert <- cor(metrics_invert, method = "spearman")
+
+corrplot(cor_matrix_invert, order = 'hclust', addrect = 2, tl.col = "black", tl.srt = 45)
+```
+
+Now we have two groups. Seems like inverted Gini index and Strong dominance index correlate better with alpha metrics that account for both richness and evenness, although Gini seems to have decent correlation with richness measures as well.
+
+#### Exploratory Factor Analysis
+
+Lets confirm that richness and evenness are two different aspects of alpha diversity captured by these 10 metrics by using Exploratory Factor Analysis.
+The input is a correlation matrix of observed variables and the output is a summary of how each observed variable maps onto latent, unobserved “factors.” 
+
+```{r}
+library(psych)
+library(car)
+
+cor_matrix <- cor(only_metrics)
+
+# Scree plot
+fafitfree <- fa(only_metrics, nfactors = ncol(cor_matrix), rotate = "none")
+n_factors <- length(fafitfree$e.values)
+scree     <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+
+# Parallel analysis
+parallel <- fa.parallel(cor_matrix)
+## Parallel analysis suggests that the number of factors =  2  and the number of components =  1 
+
+# Factor analysis using fa method
+fa.none <- fa(r=cor_matrix, 
+ nfactors = 2, 
+ fm= 'pa'  , 
+ max.iter=100, 
+ rotate= 'varimax') 
+print(fa.none)
+
+fa.diagram(fa.none)
+```
+
+EFA shows that there are two underlying factors that probably indicate richness and evenness.
+However, due to these metrics being non-normally distributed, the results of this analysis might be compromised.
+
+For other numerical variables we can perform simple Pearson's correlation coefficient:
 
 ```{r}
 # Identify numeric columns
@@ -148,7 +255,7 @@ correlation_num <- as.data.frame(cor(data_num[-c(11:14)], data_num[-c(1:10)]))
 correlation_num %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
-cor_matrix <- cor(data_num[-c(1:10)], data_num[-c(11:14)])
+cor_matrix <- cor(data_num[-c(1:10)], data_num[-c(11:14)] , method = "spearman")
 
 corrplot(cor_matrix, method = 'color', tl.col = "black", tl.srt = 45, is.corr = FALSE)
 ```
@@ -348,11 +455,11 @@ library(stringr)
 cols <- c("sample_id", "shannon_entropy", "chao1", "menhinick", "margalef", "fisher_alpha", "gini_index", "pielou_evenness" , "simpson", "strong", "faith_pd","country_of_birth", "country_residence" )
 healthy_countries <- all_healthy[, names(all_healthy) %in% cols]
 
-europe <- c("Albania", "Austria", "Belarus", "Belgium", "Croatia", "Czech Republic", "Denmark", "France", "Germany", "Greece", "Gibraltar", "Hungary", "Ireland", "Italy", "Moldova, Republic of", "Netherlands", "Norway", "Poland", "Portugal", "Romania", "Russian Federation", "Serbia", "Slovakia", "Spain", "Sweden", "Switzerland", "United Kingdom")
-soutrh_america <- c("Argentina", "Chile", "Brazil", "Bolivia", "Colombia", "Peru", "Venezuela")
-north_america <- c("Canada", "Mexico", "United States", "United States Minor Outlying Islands", "Jamaica")
-asia <- c("Azerbaijan", "China", "Hong Kong", "India", "Iraq", "Japan", "Kazakhstan", "Korea, Republic of", "Lebanon", "Malaysia", "Pakistan", "Philippines", "Singapore", "Thailand", "Turkey", "United Arab Emirates", "Viet Nam", "Bangladesh")
-africa <- c("Ethiopia", "Kenya", "Nigeria", "South Africa", "Tanzania, United Republic of", "Zambia")
+europe <- c("Albania", "Austria", "Belarus", "Belgium", "Bulgaria", "Croatia", "Czech Republic", "Denmark", "France", "Germany", "Greece", "Gibraltar", "Guernsey", "Hungary", "Ireland", "Italy", "Jersey", "Latvia", "Lithuania", "Moldova, Republic of", "Netherlands", "Norway", "Poland", "Portugal", "Romania", "Russian Federation", "Serbia", "Slovakia", "Spain", "Sweden", "Switzerland", "United Kingdom")
+soutrh_america <- c("Argentina", "Chile", "Brazil", "Bolivia", "Colombia", "Peru", "Trinidad and Tobago", "Venezuela")
+north_america <- c("Canada", "Mexico", "Panama", "United States", "Jamaica")
+asia <- c("Azerbaijan", "China", "Hong Kong", "India", "Iraq", "Iran, Islamic Republic of", "Japan", "Kazakhstan", "Korea, Republic of", "Lebanon", "Malaysia", "Pakistan", "Philippines", "Singapore", "Taiwan, Province of China", "Thailand", "Tunisia", "Turkey", "United Arab Emirates", "Uzbekistan", "Viet Nam", "Bangladesh")
+africa <- c("Ethiopia", "Kenya", "Libyan Arab Jamahiriya", "Morocco", "Nigeria", "South Africa", "Tanzania, United Republic of", "Zambia", "Zimbabwe")
 australia_oceania <- c("Australia", "New Zealand", "Fiji")
 
 healthy_countries$country_of_birth <- sapply(healthy_countries$country_of_birth, function(x) replace(x, x %in% europe, "Europe"))
@@ -373,8 +480,8 @@ table(healthy_countries$country_of_birth)
 table(healthy_countries$country_residence)
 ```
 
-For country of birth: there are only 7 samples from Africa and South America, and only 8 samples from Australia and Oceania.
-For country of residence: 1 sample from Africa, 4 samples from Asia, 2 samples from Australia and Oceania, 1 sample from South America and 1 Unspecidfied sample.
+For country of birth: there are only 12 samples from Africa and 16 from South America, and only 23 samples from Australia and Oceania.
+For country of residence: 2 samples from Africa, 11 samples from Asia, 3 samples from Australia and Oceania, 1 sample from South America and 183 Unspecidfied sample.
 
 Lets filter those continental groups out:
 
@@ -460,7 +567,8 @@ Mann-Whitney-Wilcoxon test shows that, when it comes to different countries of b
 Furthermore, for different countries of residence, there is significant difference (sign. lvl. 0,05) between samples from:
 *Europe and North America - for Faith's, Menhinick's, Margalef's, Fisher's, Chao1 and Gini's alpha diversity index.
 
-This can indicate that American population cannot be used as control for samples from Europe (Spain). 
+This can indicate that American healthy population is probably not gooing to be equated with european (Spanish) population. 
+
 
 # Session information
 
