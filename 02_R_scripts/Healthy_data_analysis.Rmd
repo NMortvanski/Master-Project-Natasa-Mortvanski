@@ -38,7 +38,7 @@ library(here)
 Load healthy subsample of AGP data: 
 
 ```{r}
-AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
+#AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
 all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRUE, sep = ",")
 
 #nrow(AGP)

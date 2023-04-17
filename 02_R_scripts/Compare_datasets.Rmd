@@ -48,7 +48,7 @@ Load *healthy subsample of AGP* data:
 
 ```{r}
 # Load all AGP data
-AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
+#AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
 
 # Load healthy samples' table
 all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRUE, sep = ",")

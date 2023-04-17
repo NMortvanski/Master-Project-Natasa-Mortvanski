@@ -39,7 +39,7 @@ Load *healthy subsample of AGP* data:
 
 ```{r}
 # Load all AGP data
-AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
+#AGP <- read.csv(here("01_tidy_data", "AGP_all.csv.gz"), header = TRUE, sep = ",")
 
 # Load healthy samples' table
 all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRUE, sep = ",")
@@ -199,27 +199,39 @@ From tutorial: https://uw-madison-microbiome-hub.github.io/Microbiome_analysis_i
 
 ```{r}
 #BiocManager::install("phyloseq")
+#remotes::install_github("jbisanz/qiime2R")
+#BiocManager::install("microbiome")
+#remotes::install_github("microsud/microbiomeutilities")
 library(phyloseq)
+library(qiime2R)
+library(microbiome)
+library(microbiomeutilities)
+
 
 # Importing ASVs abundance file
 ASVs <- read_qza(here("00_raw_data/07_hospital_CDI","table.qza"))
 # Importing metadata
-metadata <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv.gz"))
+metadata <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv"))
+rownames(metadata) <- metadata[,1]
 # Importing tree
-tree <- read_qza("rooted-tree.qza")
+tree <- read_qza(here("00_raw_data/07_hospital_CDI","rooted-tree.qza"))
 # Importing taxonomy
-taxonomy <- read_qza("taxonomy.qza")
+taxonomy <- read_qza(here("00_raw_data/07_hospital_CDI","taxonomy.qza"))
+
+taxonomy_table <- parse_taxonomy(taxonomy$data)
+
 tax_table <- do.call(rbind, strsplit(as.character(taxonomy$data$Taxon), "; "))
 colnames(tax_table) <- c("Kingdom","Phylum","Class","Order","Family","Genus","Species")
 rownames(tax_table) <- taxonomy$data$Feature.ID
 
 # Creating phyloseq object
 physeq <- phyloseq(
-  otu_table(ASVs$data, taxa_are_rows = T),
+  otu_table(ASVs$data, taxa_are_rows = TRUE),
   phy_tree(tree$data),
   tax_table(tax_table),
   sample_data(metadata)
 )
+
 ```
 
 ```{r}
@@ -247,7 +259,7 @@ tax_table(physeq)[1:5, 1:4]
 
 ```{r}
 #Distribution of reads
-plot_read_distribution(physeq, groups = "BodySite", plot.type = "density") + theme_biome_utils()
+plot_read_distribution(physeq, groups = "atbdayspreFMT", plot.type = "density") + theme_biome_utils()
 
 #Rarefy the phyloseq object to even depth prior various analysis
 physeq_rarefy <- rarefy_even_depth(physeq, rngseed=1, sample.size=0.9*min(sample_sums(physeq)), replace=F)
@@ -270,19 +282,25 @@ physeq.fam.rel <- physeq %>%
   aggregate_rare(level = "Family", detection = 50/100, prevalence = 70/100) %>%
   microbiome::transform(transform = "compositional")
 
-plot_composition(physeq.fam.rel,sample.sort = "BodySite", x.label = "SampleID") + theme(legend.position = "bottom") + scale_fill_brewer("Family", palette = "Paired") + theme_bw() + theme(axis.text.x = element_text(angle = 90)) + ggtitle("Relative abundance") + theme(legend.title = element_text(size = 18))
+plot_composition(physeq.fam.rel,sample.sort = "sample.purpose", x.label = "sample.purpose") + theme(legend.position = "bottom") + scale_fill_brewer("Family", palette = "Paired") + theme_bw() + theme(axis.text.x = element_text(angle = 90)) + ggtitle("Relative abundance") + theme(legend.title = element_text(size = 18))
 ```
 
 Another option fot barplots:
 
 ```{r}
-taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite")
+#BiocManager::install("DECIPHER")
+BiocManager::install("philr")
+
+remotes::install_github("jbisanz/MicrobeR")
+library(MicrobeR)
+
+taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose")
 
 # To make it interactive
-ggplotly(taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite"))
+ggplotly(taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose"))
 
 # save the plot
-b.plot <- taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "BodySite")
+b.plot <- taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose")
 
 ggsave("barplot_family.png", b.plot,  width = 14, height = 10, dpi = 300)
 ```
