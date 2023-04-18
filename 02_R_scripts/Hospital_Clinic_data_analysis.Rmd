@@ -47,7 +47,7 @@ all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRU
 all_healthy <- dplyr::select(all_healthy, sample_id, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, pielou_evenness, gini_index, strong, simpson, faith_pd, sex, race, host_age)
 
 all_healthy$condition <- 'healthy'
-all_healthy$qiita_study_id <- AGP$qiita_study_id[match(all_healthy$sample_id, AGP$sample_id)]
+#all_healthy$qiita_study_id <- AGP$qiita_study_id[match(all_healthy$sample_id, AGP$sample_id)]
 
 names(all_healthy)[names(all_healthy) == 'host_age'] <- 'age'
 
@@ -121,39 +121,16 @@ for (n in 1:nrow(hospital_CDI)){
 ```
 
 ```{r}
-progression_hospital <- vector('list', length(metric))
-
-for (i in 1:length(metric)){
-  progression_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], group=subject)) +
-    geom_line(aes(color=subject))+
-    geom_point(aes(color=subject))+
-    facet_wrap(dplyr::vars(hospital_CDI$subject), scale="free", ncol=5)
-}
-
-progression_hospital
-```
-
-```{r}
-violin_hospital <- vector('list', length(metric))
-
-for (i in 1:length(metric)){
-  mean_line <- hospital_CDI %>% dplyr::group_by(day_since_fmt) %>% dplyr::summarise(grp_mean=mean(.data[[metric[i]]]))
-
-  violin_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x = .data[[metric[i]]], y = day_since_fmt, color = day_since_fmt, fill = day_since_fmt)) +
-    geom_violin()+
-    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
-    geom_vline(data = mean_line, aes(xintercept = grp_mean, color = day_since_fmt), linetype = "dashed")+ 
-    labs(x = metric[i])+
-    ylab("") 
-  
-  if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
-   violin_hospital[[i]] <- violin_hospital[[i]] + 
-     scale_x_continuous(trans = 'log10') +
-     xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
-}
-
-violin_hospital
+# progression_hospital <- vector('list', length(metric))
+# 
+# for (i in 1:length(metric)){
+#   progression_hospital[[i]] <- hospital_CDI %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], group=subject)) +
+#     geom_line(aes(color=subject))+
+#     geom_point(aes(color=subject))+
+#     facet_wrap(dplyr::vars(hospital_CDI$subject), scale="free", ncol=5)
+# }
+# 
+# progression_hospital
 ```
 
 
@@ -210,9 +187,12 @@ library(microbiomeutilities)
 
 # Importing ASVs abundance file
 ASVs <- read_qza(here("00_raw_data/07_hospital_CDI","table.qza"))
+
 # Importing metadata
 metadata <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv"))
 rownames(metadata) <- metadata[,1]
+metadata$time <- as.numeric(metadata$time)
+
 # Importing tree
 tree <- read_qza(here("00_raw_data/07_hospital_CDI","rooted-tree.qza"))
 # Importing taxonomy
@@ -232,25 +212,24 @@ physeq <- phyloseq(
   sample_data(metadata)
 )
 
+#Subset the data to keep only Receptor samples.
+physeq.rec <- subset_samples(physeq, sample.purpose == "Receptor")
+
+for(i in 1:nsamples(physeq.rec)) {
+  if(sample_data(physeq.rec)$time[i] <= 0){
+    sample_data(physeq.rec)$FMT_pre_post[i] <- "pre"
+  } else {
+    sample_data(physeq.rec)$FMT_pre_post[i] <- "post"
+  }
+}
+
 ```
 
-```{r}
-# check for features of data  
-summarize_phyloseq(physeq)
-print_ps(physeq)
-summary(sample_sums(physeq))
-```
 
 ```{r}
 ntaxa(physeq)
 
 nsamples(physeq)
-
-sample_names(physeq)[1:5]  
-
-rank_names(physeq)  
-
-sample_variables(physeq)  
 
 otu_table(physeq)[1:5, 1:5]  
 
@@ -258,50 +237,276 @@ tax_table(physeq)[1:5, 1:4]
 ```
 
 ```{r}
-#Distribution of reads
-plot_read_distribution(physeq, groups = "atbdayspreFMT", plot.type = "density") + theme_biome_utils()
+# Keep samples with non-zero total taxa
+pruned <- prune_samples(sample_sums(physeq) > 0, physeq)
 
-#Rarefy the phyloseq object to even depth prior various analysis
-physeq_rarefy <- rarefy_even_depth(physeq, rngseed=1, sample.size=0.9*min(sample_sums(physeq)), replace=F)
+# Check total taxa in each sample again
+sample_sums(pruned)
+
+#rarefy samples
+physeq_rarefy <- rarefy_even_depth(pruned, rngseed=1, sample.size=0.9*min(sample_sums(pruned)), replace=F)
 
 #Check the taxa prevalence at Phylum level
-plot_taxa_prevalence(physeq, "Phylum")
+plot_taxa_prevalence(physeq_rarefy, "Phylum")
 ```
 
 Barplots are a one way of visualising the composition of your samples. At Family level and relative abundance
 
 ```{r}
-physeq_fam <- microbiome::aggregate_rare(physeq, level = "Family", detection = 50/100, prevalence = 70/100)
+# convert to relative abundance  
+physeq.rec.rel <- microbiome::transform(physeq.rec, "compositional")
 
-# Alternative
-physeq_fam <- aggregate_top_taxa2(physeq, level = "Family", top = 25)
+physeq.rec.rel2 <- prune_taxa(taxa_sums(physeq.rec.rel) > 0, physeq.rec.rel)
+```
 
-physeq.fam.rel <- microbiome::transform(physeq_fam, "compositional")
+Check for the core ASVs
 
-physeq.fam.rel <- physeq %>%
+```{r}
+core.taxa.standard <- core_members(physeq.rec.rel2, detection = 0.001, prevalence = 50/100)
+print(core.taxa.standard)
+```
+
+we only see IDs, not very informative. We can get the classification of these as below.
+
+```{r}
+#install.packages('DT')
+library(DT)
+# Extract the taxonomy table
+taxonomy_core <- as.data.frame(tax_table(physeq.rec.rel2))
+
+# Subset this taxonomy table to include only core OTUs
+core_taxa_id <- subset(taxonomy_core, rownames(taxonomy_core) %in% core.taxa.standard)
+
+DT::datatable(core_taxa_id)
+```
+
+```{r}
+physeq.fam.rel <- physeq.rec %>%
   aggregate_rare(level = "Family", detection = 50/100, prevalence = 70/100) %>%
   microbiome::transform(transform = "compositional")
 
-plot_composition(physeq.fam.rel,sample.sort = "sample.purpose", x.label = "sample.purpose") + theme(legend.position = "bottom") + scale_fill_brewer("Family", palette = "Paired") + theme_bw() + theme(axis.text.x = element_text(angle = 90)) + ggtitle("Relative abundance") + theme(legend.title = element_text(size = 18))
+plot_composition(physeq.fam.rel, sample.sort = "FMT_pre_post", x.label = "FMT_pre_post") + theme(legend.position = "bottom") + scale_fill_brewer("Family", palette = "Paired") + theme_bw() + theme(axis.text.x = element_text(angle = 90, size = 10)) + ggtitle("Relative abundance") + theme(legend.title = element_text(size = 18))
 ```
-
-Another option fot barplots:
+```{r}
+physeq.fam <- aggregate_taxa(physeq.rec,"Family")
+top_four <- top_taxa(physeq.fam, 4)
+top_four
+```
 
 ```{r}
-#BiocManager::install("DECIPHER")
-BiocManager::install("philr")
-
-remotes::install_github("jbisanz/MicrobeR")
-library(MicrobeR)
-
-taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose")
-
-# To make it interactive
-ggplotly(taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose"))
-
-# save the plot
-b.plot <- taxa_barplot(Summarize.Taxa(ASVs$data, as.data.frame(tax_table))$Family, metadata, "sample.purpose")
-
-ggsave("barplot_family.png", b.plot,  width = 14, height = 10, dpi = 300)
+physeq.class <- aggregate_taxa(physeq.rec,"Class")
+top_four <- top_taxa(physeq.class, 4)
+top_four
 ```
 
+```{r}
+physeq.genus <- aggregate_taxa(physeq.rec, "Genus")
+top_four <- top_taxa(physeq.genus, 4)
+top_four
+
+top_genera <- plot_listed_taxa(physeq.genus, top_four, 
+                 group= "FMT_pre_post",
+                 group.order = c("gut","tongue","right palm", "left palm"),
+                 group.colors = mycols,
+                 add.violin = F,
+                 dot.opacity = 0.25,
+                 box.opacity = 0.25,
+                 panel.arrange= "wrap")
+top_genera
+
+#compare
+# top_genera + stat_compare_means(
+#                    comparisons = comps,
+#                    label = "p.format",
+#                    tip.length = 0.05,
+#                    method = "wilcox.test")
+```
+
+```{r}
+dom.tax <- dominant_taxa(physeq.rec,level = "Class", group="FMT_pre_post")
+head(dom.tax$dominant_overview)
+```
+
+```{r}
+mycols <- c("coral", "steelblue2", "slategray2", "olivedrab")
+
+grp_abund <- get_group_abundances(physeq.rec, 
+                                  level = "Class", 
+                                  group="FMT_pre_post",
+                                  transform = "compositional")
+
+# clean names 
+grp_abund$OTUID <- gsub("C__", "",grp_abund$OTUID)
+grp_abund$OTUID <- ifelse(grp_abund$OTUID == "", 
+                          "Unclassified", grp_abund$OTUID)
+
+mean.plot <- grp_abund %>% # input data
+  ggplot(aes(x= reorder(OTUID, mean_abundance), # reroder based on mean abundance
+             y= mean_abundance,
+             fill=FMT_pre_post)) + # x and y axis 
+  geom_bar(     stat = "identity", 
+                position=position_dodge()) + 
+  scale_fill_manual("FMT_pre_post", values=mycols) + # manually specify colors
+  theme_bw() + # add a widely used ggplot2 theme
+  ylab("Mean Relative Abundance") + # label y axis
+  xlab("Phylum") + # label x axis
+  coord_flip() # rotate plot 
+
+mean.plot
+```
+
+```{r}
+bact_dom <- find_samples_taxa(physeq.gen, taxa = "c__Clostridia")
+
+#get sample dominated by 	c__Clostridia
+ps.sub <- prune_samples(sample_names(physeq.gen) %in% bact_dom, physeq.gen)
+## how to show which samples?
+```
+
+Tree plot
+
+```{r}
+physeq_top_50 <- subset_taxa(physeq.rec, Kingdom=="k__Bacteria")
+physeq_top_50 <- prune_taxa(names(sort(taxa_sums(physeq_top_50),TRUE)[1:50]), physeq_top_50)
+
+# Remove bootstrap values
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left")
+
+# Color the nodes by category
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="FMT_pre_post")
+
+# Convert to radial tree
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="FMT_pre_post") + coord_polar(theta="y")
+```
+
+Lefse to test for differential abundance between categories
+
+```{r}
+# Install microbiome marker package
+#remotes::install_version('ggplot2', version='3.3.6')
+#BiocManager::install("ggtree")
+#BiocManager::install("microbiomeMarker")
+
+# activate microbiome marker package 
+library(microbiomeMarker)
+
+# Differential abundance using lefse
+lefse <- run_lefse(physeq.rec,
+                  wilcoxon_cutoff = 0.01,
+                  norm = "CPM",
+                  group = "FMT_pre_post",
+                  kw_cutoff = 0.01,
+                  multigrp_strat = TRUE,
+                  lda_cutoff = 3.5
+)
+
+
+head(marker_table(lefse))
+
+# bar plot
+plot_ef_bar(lefse)
+# dot plot
+plot_ef_dot(lefse)
+```
+
+```{r}
+physeq_top_50 <- subset_taxa(physeq.rec, Kingdom=="k__Bacteria")
+physeq_top_50 <- prune_taxa(names(sort(taxa_sums(physeq_top_50),TRUE)[1:50]), physeq_top_50)
+
+# Color the nodes by category
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="FMT_pre_post")
+```
+
+## Lefse with lefser package
+
+```{r}
+#BiocManager::install("lefser")
+library(lefser)
+#BiocManager::install("microbiome/mia", version='3.14')
+library(mia)
+
+counts  <- ASVs$data   # Abundance table (e.g. ASV data; to assay data)
+tax     <- tax_table     # Taxonomy table (to rowData)
+samples <-  metadata  # Sample data (to colData)
+se <- SummarizedExperiment(assays = list(counts = counts),
+                           colData = samples,
+                           rowData = tax)
+
+# Goes through the whole DataFrame. Removes '.*[kpcofg]__' from strings, where [kpcofg] 
+# is any character from listed ones, and .* any character.
+rowdata_modified <- BiocParallel::bplapply(rowData(se), 
+                                           FUN = stringr::str_remove, 
+                                           pattern = '.*[kpcofg]__')
+
+# Genus level has additional '\"', so let's delete that also
+rowdata_modified <- BiocParallel::bplapply(rowdata_modified, 
+                                           FUN = stringr::str_remove, 
+                                           pattern = '\"')
+
+# rowdata_modified is a list, so it is converted back to DataFrame format. 
+rowdata_modified <- DataFrame(rowdata_modified)
+
+# And then assigned back to the SE object
+rowData(se) <- rowdata_modified
+
+# Now we have a nicer table
+head(rowData(se))
+
+head(colData(se))
+
+#add relative abundances along the original count data 
+se <- relAbundanceCounts(se)
+assays(se)
+
+assays(se)$counts[1:5,1:7]
+assay(se, "relabundance")[1:5,1:7]
+
+dim(se)
+
+#add phylogenetic tree
+tse <- as(se, "TreeSummarizedExperiment")
+# Add tree to rowTree
+rowTree(tse) <- tree$data
+# Check
+tse
+
+se <- tse
+
+head(rowTree(tse))
+rowLinks(tse)
+
+# subset by sample purpose
+se_subset_by_sample <- se[ , se$sample.purpose %in% c("Receptor")]
+
+# show dimensions
+dim(se_subset_by_sample)
+
+head(colData(se_subset_by_sample))
+
+# add metadata column
+
+for(i in 1:dim(se_subset_by_sample)[2]) {
+  if(se_subset_by_sample$time[i] <= 0){
+    se_subset_by_sample$FMT_pre_post[i] <- "pre"
+  } else {
+    se_subset_by_sample$FMT_pre_post[i] <- "post"
+  }
+}
+
+
+# subset by sample and feature and get rid of NAs
+se_subset_by_sample_feature <- se[rowData(se)$Phylum %in% c("Bacteria") & !is.na(rowData(se)$Phylum), se$sample.purpose %in% c("Receptor")]
+
+# show dimensions
+dim(se_subset_by_sample_feature)
+```
+
+```{r}
+table(se_subset_by_sample$FMT_pre_post)
+```
+
+```{r}
+res <- lefser(se_subset_by_sample, groupCol = "FMT_pre_post")
+head(res)
+lefserPlot(res)
+```
