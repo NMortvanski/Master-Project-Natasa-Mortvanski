@@ -487,6 +487,17 @@ Simpson, Strong and Pielou can't differentiate between UC and healthy
 
 ## Visualising the difference
 
+### Gini vs Faith plot:
+
+```{r}
+mean_vline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::summarise(grp_mean_v = mean(faith_pd))
+mean_hline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::summarise(grp_mean_h = mean(gini_index))
+
+ggplot(healthy_disease, aes(faith_pd, gini_index)) + geom_jitter(aes(colour = healthy_or_not)) + 
+  geom_hline(data = mean_hline, aes(yintercept = grp_mean_h, color = healthy_or_not), linetype = "dashed") + 
+  geom_vline(data = mean_vline, aes(xintercept = grp_mean_v, color = healthy_or_not), linetype = "dashed")
+```
+
 ### Gini vs Menhinick plot:
 
 ```{r}
@@ -501,10 +512,10 @@ ggplot(healthy_disease, aes(menhinick, gini_index)) + geom_jitter(aes(colour = h
 ### Gini vs Faith plot:
 
 ```{r}
-mean_vline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::summarise(grp_mean_v = mean(faith_pd))
+mean_vline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::summarise(grp_mean_v = mean(chao1))
 mean_hline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::summarise(grp_mean_h = mean(gini_index))
 
-ggplot(healthy_disease, aes(faith_pd, gini_index)) + geom_jitter(aes(colour = healthy_or_not)) + 
+ggplot(healthy_disease, aes(chao1, gini_index)) + geom_jitter(aes(colour = healthy_or_not)) + 
   geom_hline(data = mean_hline, aes(yintercept = grp_mean_h, color = healthy_or_not), linetype = "dashed") + 
   geom_vline(data = mean_vline, aes(xintercept = grp_mean_v, color = healthy_or_not), linetype = "dashed")
 ```
@@ -554,4 +565,137 @@ mean_hline <- healthy_disease %>% dplyr::group_by(healthy_or_not) %>% dplyr::sum
 ```
 
 * Dominance (Strong) and evenness (Pielou) are complementary.
+
+## Comparing singe sample to healthy sample distribution with modified t-test
+
+
+```{r}
+set.seed(1)
+
+#use 70% of dataset as healthy population and 30% as healthy samples to test 
+sample <- sample(c(TRUE, FALSE), nrow(all_healthy), replace=TRUE, prob=c(0.7,0.3))
+healthy_popul  <- all_healthy[sample, ]
+healthy_test   <- all_healthy[!sample, ]
+
+nrow(healthy_popul)
+nrow(healthy_test)
+
+# samples to test 
+test_samples <- rbind.fill(healthy_test, CDI)
+
+#test_samples <- rbind.fill(healthy_popul, CDI)
+
+
+nrow(test_samples)
+```
+
+```{r}
+library(table1)
+
+CrawfordHowell <- function(case, control){
+  tval <- (case - mean(control)) / (sd(control)*sqrt((length(control)+1) / length(control)))
+  degfree <- length(control)-1
+  pval <- 2*(1-pt(abs(tval), df=degfree)) #two-tailed p-value
+  result <- data.frame(t = tval, df = degfree, p=pval)
+  return(result)
+}
+
+#table_list <- list()
+
+for (i in 1:length(metric)){
+
+    t_statistics <- list()
+    t_prob <- list()
+    result <- data.frame()
+    
+    for (n in 1:nrow(test_samples)){
+      result <- CrawfordHowell(test_samples[[metric[i]]][n], healthy_popul[[metric[i]]]) 
+      t_statistics <- append(t_statistics, result[1])
+      t_prob <- append(t_prob, result[3])
+    }
+    
+    t_test_results <- test_samples[, c("sample_id", "condition")]
+    t_test_results$metric <- test_samples[[metric[i]]]
+    t_test_results$t_statistic <- unlist(t_statistics)
+    t_test_results$t_probability <- unlist(t_prob)
+    
+    #table_list[[i]] <- t_test_results
+    
+    print(table1(~ metric + t_probability | condition, data=t_test_results, caption = paste("Results for alpha metric:", metric[i], " ")))
+}
+
+# for (i in 1:length(metric)){
+#   table1(~ metric + t_probability | condition, data=table_list[[i]], caption = paste("Results for alpha metric:", metric[i], " "))
+# }
+
+```
+
+
+```{r}
+library(table1)
+
+table_list <- list()
+
+for (i in 1:length(metric)){
+    mean_healthy <- mean(healthy_popul[[metric[i]]])
+    SD_healthy <- sd(healthy_popul[[metric[i]]])
+    
+    t_statistics <- list()
+    t_prob <- list()
+    t_test_results <- data.frame()
+    
+    for (n in 1:nrow(test_samples)){
+      x <- test_samples[[metric[i]]][n]
+      t_stat_x <- (x-mean_healthy)/(SD_healthy*sqrt((nrow(healthy_popul)+1)/nrow(healthy_popul)))
+      t_statistics <- append(t_statistics, t_stat_x)
+      t_prob_x <- pt(t_stat_x, df=nrow(healthy_popul)-1)
+      t_prob <- append(t_prob, t_prob_x)
+    }
+    
+    t_test_results <- test_samples[, c("sample_id", "condition")]
+    t_test_results$metric <- test_samples[[metric[i]]]
+    t_test_results$t_statistic <- unlist(t_statistics)
+    t_test_results$t_probability <- unlist(t_prob)
+    
+    table_list[[i]] <- t_test_results
+    
+    print(table1(~ metric + t_probability | condition, data=t_test_results, caption = paste("Results for alpha metric:", metric[i], " ")))
+}
+```
+
+```{r}
+for (i in 1:length(metric)){
+p<- ggplot(table_list[[i]], aes(x=t_probability, color=condition)) +
+  geom_density()
+
+print(p)
+}
+```
+
+```{r}
+table_list[[6]]$t_probability <- round(p.adjust(table_list[[6]]$t_probability, "fdr"), digits=5)
+table1(~ metric + t_probability | condition, data=table_list[[6]], caption ="Results for alpha metric:  gini_index ")
+```
+
+```{r}
+mean_healthy <- mean(healthy_popul$strong)
+SD_healthy <- sd(healthy_popul$strong)
+
+t_statistics <- list()
+t_prob <- list()
+
+for (n in 1:nrow(test_samples)){
+  x <- test_samples$strong[n]
+  t_stat_x <- (x-mean_healthy)/(SD_healthy*sqrt((nrow(healthy_popul)+1)/nrow(healthy_popul)))
+  t_statistics <- append(t_statistics, t_stat_x)
+  t_prob_x <- pt(t_stat_x, df=nrow(healthy_popul)-1, lower.tail=FALSE)
+  t_prob <- append(t_prob, t_prob_x)
+}
+
+t_test_results <- test_samples[, c("sample_id", "strong", "condition")]
+t_test_results$t_statistic <- unlist(t_statistics)
+t_test_results$t_probability <- unlist(t_prob)
+
+table1(~ strong + t_probability | condition, data=t_test_results, caption = "Results for alpha metric: strong")
+```
 

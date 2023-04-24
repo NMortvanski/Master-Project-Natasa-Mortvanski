@@ -123,19 +123,6 @@ Normal distribution:
 
 Consclusion: none of the metrics follow perfect normal distribution. However, Faith PD, Menhinick and Margalef are closest to normality.
 
-### Finding distribution type
-
-```{r}
-#install.packages("fitdistrplus")
-library(fitdistrplus)
-
-for (i in 1:length(metric)){
-  descdist(healthy_disease[[metric[i]]], discrete = FALSE)
-}
-```
-
-the p-value < 0.05 implying that the distribution of the data are significantly different from normal distribution. 
-In other words, we cannot assume the normality for neither of the alpha metrics.
 
 ## Correlations
 

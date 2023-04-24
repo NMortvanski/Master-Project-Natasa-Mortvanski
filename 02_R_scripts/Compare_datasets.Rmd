@@ -42,6 +42,8 @@ library(ggplotify)
 library(here)
 library(tableone)
 
+#install.packages("table1")
+library(table1)
 ```
 
 Load *healthy subsample of AGP* data: 
@@ -56,7 +58,7 @@ all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRU
 all_healthy <- dplyr::select(all_healthy, sample_id, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, pielou_evenness, gini_index, strong, simpson, faith_pd, sex, race, host_age)
 
 all_healthy$condition <- 'healthy'
-all_healthy$qiita_study_id <- AGP$qiita_study_id[match(all_healthy$sample_id, AGP$sample_id)]
+#all_healthy$qiita_study_id <- AGP$qiita_study_id[match(all_healthy$sample_id, AGP$sample_id)]
 
 names(all_healthy)[names(all_healthy) == 'host_age'] <- 'age'
 
@@ -114,7 +116,7 @@ metric <- c("chao1", "margalef", "menhinick", "fisher_alpha", "faith_pd", "gini_
 
 The summary of the data contained in all datasets (treating all metrics as not normally distributed):
 ```{r}
-all_data <- rbind.fill(all_healthy, IBD, UC, CD, CDI, CDI_FMT, FMT_IBD_CDI, hospital_CDI)
+all_data <- rbind.fill(all_healthy, IBD, UC, CD, CDI, CDI_FMT, FMT_IBD_CDI)
   
 all_data <- dplyr::select(all_data, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, gini_index, strong, pielou_evenness, faith_pd, condition)
 
@@ -125,6 +127,12 @@ all_data <- all_data %>% filter (condition != "Donors")
 
 table_one <- CreateTableOne(data = all_data) 
 print(table_one, nonnormal = metric)
+```
+
+```{r}
+all_data$condition <- as.factor(all_data$condition)
+all_data$condition <- ordered(all_data$condition, levels = c("healthy", "CD", "UC", "CDI", "CDI + CD", "CDI + UC"))
+table1(~ chao1 + margalef + menhinick + fisher_alpha + faith_pd + gini_index + strong + pielou_evenness + shannon_entropy + simpson | condition, data=all_data)
 ```
 
 
@@ -222,7 +230,7 @@ table <- tests_IBD_check %>%
 table
 ```
 
-Based on Mann-Whitney-Wilcoxon test, alpha diversity of UC samples from second study and CD are significantly different for Menhinick's index, Fisher's alpha, Faith's PD and Strong's evenness. Also UC samples from first and second study are significantly different for Menhinick's index, Faith's PD and Strong's evenness. We can look on these samples as one population of IBD. It seems that UC samples from second study expres lower richness and evenness that the ones (7) from the first study.
+Based on Mann-Whitney-Wilcoxon test, alpha diversity of UC samples from second study and CD are significantly different for Menhinick's index, Fisher's alpha (?), Faith's PD and Strong's evenness. Also UC samples from first and second study are significantly different for Menhinick's index, Faith's PD and Strong's evenness. We can look on these samples as one population of IBD. It seems that UC samples from second study expres lower richness and evenness that the ones (7) from the first study.
 
 ## Healthy samples vs IBD samples
 

@@ -51,17 +51,28 @@ length(AGP_metadata)
 Loading tables containing different alpha diversity metrics:
 
 ```{r}
-shannon_AGP <- read.delim(here("00_raw_data/01_AGP_data", "shannon_AGP_all.tsv.gz"))
-chao1_AGP <- read.delim(here("00_raw_data/01_AGP_data", "chao1_AGP_all.tsv.gz"))
-menhinick_AGP <- read.delim(here("00_raw_data/01_AGP_data", "menhinick_AGP_all.tsv.gz"))
-margalef_AGP <- read.delim(here("00_raw_data/01_AGP_data", "margalef_AGP_all.tsv.gz"))
-simpson_AGP <- read.delim(here("00_raw_data/01_AGP_data", "simpson_AGP_all.tsv.gz"))
-fisher_AGP <- read.delim(here("00_raw_data/01_AGP_data", "fisher_AGP_all.tsv.gz"))
-gini_AGP <- read.delim(here("00_raw_data/01_AGP_data", "gini_AGP_all.tsv.gz"))
-strong_AGP <- read.delim(here("00_raw_data/01_AGP_data", "strong_AGP_all.tsv.gz"))
-faith_AGP <- read.delim(here("00_raw_data/01_AGP_data", "faith_AGP_all.tsv.gz"))
-pielou_AGP <- read.delim(here("00_raw_data/01_AGP_data", "pielou_AGP_all.tsv.gz"))
+# shannon_AGP <- read.delim(here("00_raw_data/01_AGP_data", "shannon_AGP_all.tsv.gz"))
+# chao1_AGP <- read.delim(here("00_raw_data/01_AGP_data", "chao1_AGP_all.tsv.gz"))
+# menhinick_AGP <- read.delim(here("00_raw_data/01_AGP_data", "menhinick_AGP_all.tsv.gz"))
+# margalef_AGP <- read.delim(here("00_raw_data/01_AGP_data", "margalef_AGP_all.tsv.gz"))
+# simpson_AGP <- read.delim(here("00_raw_data/01_AGP_data", "simpson_AGP_all.tsv.gz"))
+# fisher_AGP <- read.delim(here("00_raw_data/01_AGP_data", "fisher_AGP_all.tsv.gz"))
+# gini_AGP <- read.delim(here("00_raw_data/01_AGP_data", "gini_AGP_all.tsv.gz"))
+# strong_AGP <- read.delim(here("00_raw_data/01_AGP_data", "strong_AGP_all.tsv.gz"))
+# faith_AGP <- read.delim(here("00_raw_data/01_AGP_data", "faith_AGP_all.tsv.gz"))
+# pielou_AGP <- read.delim(here("00_raw_data/01_AGP_data", "pielou_AGP_all.tsv.gz"))
 
+
+shannon_AGP <- read.delim(here("00_raw_data/01_AGP_data", "shannon_AGP.tsv.gz"))
+chao1_AGP <- read.delim(here("00_raw_data/01_AGP_data", "chao1_AGP.tsv.gz"))
+menhinick_AGP <- read.delim(here("00_raw_data/01_AGP_data", "menhinick_AGP.tsv.gz"))
+margalef_AGP <- read.delim(here("00_raw_data/01_AGP_data", "margalef_AGP.tsv.gz"))
+simpson_AGP <- read.delim(here("00_raw_data/01_AGP_data", "simpson_AGP.tsv.gz"))
+fisher_AGP <- read.delim(here("00_raw_data/01_AGP_data", "fisher_AGP.tsv.gz"))
+gini_AGP <- read.delim(here("00_raw_data/01_AGP_data", "gini_AGP.tsv.gz"))
+strong_AGP <- read.delim(here("00_raw_data/01_AGP_data", "strong_AGP.tsv.gz"))
+faith_AGP <- read.delim(here("00_raw_data/01_AGP_data", "faith_AGP.tsv.gz"))
+pielou_AGP <- read.delim(here("00_raw_data/01_AGP_data", "pielou_AGP.tsv.gz"))
 
 # Merge alpha diversity data frames
 
