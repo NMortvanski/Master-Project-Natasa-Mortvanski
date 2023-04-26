@@ -472,6 +472,10 @@ nrow(AGP_healthy_subset)
 
 table(AGP_healthy_subset$bmi_cat)
 ```
+Add condition:
+```{r}
+AGP_healthy_subset$condition <- 'healthy'
+```
 
 Export table into csv format:
 

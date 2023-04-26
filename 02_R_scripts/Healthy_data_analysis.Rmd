@@ -264,6 +264,7 @@ cat_cols <- unlist(lapply(all_healthy, is.character))
 # Subset numeric variables from meta data:
 data_cat <- all_healthy[ , cat_cols]
 data_cat$sample_id <- NULL
+data_cat$condition <- NULL
 ```
 
 ```{r, message=FALSE}

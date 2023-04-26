@@ -288,6 +288,7 @@ names(all_ncbi_CDI_alpha)[names(all_ncbi_CDI_alpha) == 'X'] <- 'sample_id'
 ncbi_CDI <- all_ncbi_CDI_alpha %>% left_join(CDI_meta, by=c('sample_id' = 'sample_id'))
 ncbi_CDI <- ncbi_CDI[complete.cases(ncbi_CDI),]
 
+ncbi_CDI$condition <- "CDI"
 
 nrow(ncbi_CDI)
 ```
@@ -483,6 +484,19 @@ names(all_hosp_CDI_alpha)[names(all_hosp_CDI_alpha) == 'X'] <- 'sample_id'
 hosp_CDI <- all_hosp_CDI_alpha %>% left_join(hosp_CDI_meta, by=c('sample_id' = 'sample_id'))
 hosp_CDI <- hosp_CDI[complete.cases(hosp_CDI),]
 
+for(i in 1:nrow(hosp_CDI)) {
+  if(hosp_CDI$day_since_fmt[i] <= 0){
+    hosp_CDI$FMT_pre_post[i] <- "pre"
+    hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "pre", sep="_")
+  } else {
+    hosp_CDI$FMT_pre_post[i] <- "post"
+    hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "post", sep="_")
+  }
+}
+
+hosp_CDI$FMT_pre_post <- as.factor(hosp_CDI$FMT_pre_post)
+hosp_CDI$FMT_pre_post <- relevel(hosp_CDI$FMT_pre_post, "pre")
+levels(hosp_CDI$FMT_pre_post)
 
 nrow(hosp_CDI)
 ```
@@ -493,6 +507,71 @@ Export data frame into .tsv.gz file:
 ```{r}
 write.csv(hosp_CDI, gzfile(here("01_tidy_data", "hosp_CDI.csv.gz")), row.names=FALSE)
 ```
+
+```{r}
+# hosp_CDI_meta_write <- read.delim("~/Desktop/master_project/Data_Hospital_CDI/sample-metadata.tsv")
+# 
+# 
+# hosp_CDI_meta_write$time <- as.numeric(hosp_CDI_meta_write$time)
+# 
+# for(i in 1:nrow(hosp_CDI_meta_write)) {
+#   if(hosp_CDI_meta_write$time[i] <= 0 & !is.na(hosp_CDI_meta_write$time[i])){
+#     hosp_CDI_meta_write$FMT.pre.post[i] <- "pre"
+#   } else if (hosp_CDI_meta_write$time[i] > 0 & !is.na(hosp_CDI_meta_write$time[i])) {
+#     hosp_CDI_meta_write$FMT.pre.post[i] <- "post"
+#   }
+# }
+# 
+# write.csv(hosp_CDI_meta_write, gzfile(here("01_tidy_data", "sample-metadata2.tsv")), row.names=FALSE)
+```
+
+
+## Hospital dataset - fecal donor samples
+
+```{r}
+# Load metadata
+hosp_donor_meta_all <- read.delim(here("00_raw_data/08_hospital_donor", "sample-metadata.tsv.gz"))
+
+# Load .tsv.gz files from inflammatory bowel disease analysis
+shannon_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "shannon_hosp_donor.tsv.gz"))
+chao1_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "chao1_hosp_donor.tsv.gz"))
+fisher_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "fisher_hosp_donor.tsv.gz"))
+margalef_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "margalef_hosp_donor.tsv.gz"))
+simpson_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "simpson_hosp_donor.tsv.gz"))
+gini_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "gini_hosp_donor.tsv.gz"))
+menhinick_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "menhinick_hosp_donor.tsv.gz"))
+strong_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "strong_hosp_donor.tsv.gz"))
+faith_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "faith_hosp_donor.tsv.gz"))
+pielou_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor", "pielou_hosp_donor.tsv.gz"))
+```
+
+```{r}
+# Clean and filter metadata
+hosp_donor_meta <- dplyr::select(hosp_donor_meta_all, SampleID, Edad, Genero, n, Donor, n_donante)
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'SampleID'] <- 'sample_id'
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'Edad'] <- 'age'
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'Genero'] <- 'sex'
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'Donor'] <- 'donor'
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'n_donante'] <- 'n_donation'
+
+# Merge alpha diversity data frames
+all_hosp_donor_alpha <- list(shannon_hosp_donor, chao1_hosp_donor, fisher_hosp_donor, margalef_hosp_donor, gini_hosp_donor, menhinick_hosp_donor, strong_hosp_donor, simpson_hosp_donor, faith_hosp_donor, pielou_hosp_donor) 
+all_hosp_donor_alpha <- all_hosp_donor_alpha %>% reduce(inner_join, by="X")
+names(all_hosp_donor_alpha)[names(all_hosp_donor_alpha) == 'X'] <- 'sample_id'
+
+# Merge alpha metrics' data frame with metadata
+hosp_donor <- all_hosp_donor_alpha %>% left_join(hosp_donor_meta, by=c('sample_id' = 'sample_id'))
+hosp_donor <- hosp_donor[complete.cases(hosp_donor),]
+
+hosp_donor$condition <- "healthy_donors"
+nrow(hosp_donor)
+```
+
+Export table:
+```{r}
+write.csv(hosp_donor, gzfile(here("01_tidy_data", "hosp_donor.csv.gz")), row.names=FALSE)
+```
+
 
 # Session information
 
