@@ -463,16 +463,15 @@ pielou_hosp_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "pielou_hosp_C
 
 ```{r}
 # Clean and filter metadata
-hosp_CDI_meta <- dplyr::select(hosp_CDI_meta_all, Sample.ID, sample.origin, sex, age, time, CDItreatment.PREFMT, severeICD, Clinicalrecurrence)
+hosp_CDI_meta <- dplyr::select(hosp_CDI_meta_all, Sample.ID, sample.purpose, sample.origin, age, time)
 names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'Sample.ID'] <- 'sample_id'
 names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'sample.origin'] <- 'condition'
 names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'time'] <- 'day_since_fmt'
-names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'CDItreatment.PREFMT'] <- 'antibiotic_use'
-names(hosp_CDI_meta)[names(hosp_CDI_meta) == 'Clinicalrecurrence'] <- 'clinical_recurrence'
 
 hosp_CDI_meta <- hosp_CDI_meta %>%
   filter(age > 20 & age < 69) %>%
-  filter(condition == "Cdif")
+  filter(condition == "Cdif") %>%
+  filter(sample.purpose != "Adsorbate")
 
 
 # Merge alpha diversity data frames
@@ -482,21 +481,28 @@ names(all_hosp_CDI_alpha)[names(all_hosp_CDI_alpha) == 'X'] <- 'sample_id'
 
 # Merge alpha metrics' data frame with metadata
 hosp_CDI <- all_hosp_CDI_alpha %>% left_join(hosp_CDI_meta, by=c('sample_id' = 'sample_id'))
-hosp_CDI <- hosp_CDI[complete.cases(hosp_CDI),]
+hosp_CDI <- hosp_CDI %>%
+  filter(!is.na(sample.purpose))
+
 
 for(i in 1:nrow(hosp_CDI)) {
-  if(hosp_CDI$day_since_fmt[i] <= 0){
-    hosp_CDI$FMT_pre_post[i] <- "pre"
-    hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "pre", sep="_")
-  } else {
-    hosp_CDI$FMT_pre_post[i] <- "post"
-    hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "post", sep="_")
+  if(hosp_CDI$sample.purpose[i] =="Receptor" & hosp_CDI$day_since_fmt[i] <= 0){
+      hosp_CDI$FMT_pre_post[i] <- "pre"
+      hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "pre", sep="_")
+  } else if (hosp_CDI$sample.purpose[i] =="Receptor" & hosp_CDI$day_since_fmt[i] > 0){
+      hosp_CDI$FMT_pre_post[i] <- "post"
+      hosp_CDI$condition[i] <- paste(hosp_CDI$condition[i], "post", sep="_")
+  } else if(hosp_CDI$sample.purpose[i] =="Pool"){
+      hosp_CDI$FMT_pre_post[i] <- NA
+      hosp_CDI$condition[i] <- "donor"
   }
 }
 
 hosp_CDI$FMT_pre_post <- as.factor(hosp_CDI$FMT_pre_post)
 hosp_CDI$FMT_pre_post <- relevel(hosp_CDI$FMT_pre_post, "pre")
 levels(hosp_CDI$FMT_pre_post)
+
+hosp_CDI <- dplyr::select(hosp_CDI, sample_id, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, pielou_evenness, gini_index, strong, simpson, faith_pd, condition, FMT_pre_post)
 
 nrow(hosp_CDI)
 ```

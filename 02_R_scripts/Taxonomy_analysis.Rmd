@@ -1,0 +1,679 @@
+---
+title: "Taxonomy_analysis"
+author: "Natasa Mortvanski"
+date: "2023-04-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+## Taxonomy 
+
+From tutorial: https://uw-madison-microbiome-hub.github.io/Microbiome_analysis_in-_R/
+and: https://rpubs.com/mohsen/lefse_analysis_cleaned_prevalence_phyloseq
+
+### CDI samples - before vs after FMT
+
+```{r}
+library(readr)
+library(data.table)
+library(stringr)
+library(ggplot2)
+library(plyr)
+library(purrr)
+library(dplyr)
+library(flextable)
+library(tibble)
+library(ComplexHeatmap)
+library(RColorBrewer)
+library(ggplotify)
+library(here)
+library(tidyverse)
+```
+
+```{r}
+#BiocManager::install("phyloseq")
+#remotes::install_github("jbisanz/qiime2R")
+#BiocManager::install("microbiome")
+#remotes::install_github("microsud/microbiomeutilities")
+library(phyloseq)
+library(qiime2R)
+library(microbiome)
+library(microbiomeutilities)
+
+
+# Importing ASVs abundance file
+ASVs <- read_qza(here("00_raw_data/09_hospital_data_qiime2","table-CDI.qza"))
+
+# Importing metadata
+metadata <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv.gz"))
+rownames(metadata) <- metadata[,1]
+metadata$time <- as.numeric(metadata$time)
+
+# Importing tree
+tree <- read_qza(here("00_raw_data/09_hospital_data_qiime2","rooted-tree-CDI.qza"))
+# Importing taxonomy
+taxonomy <- read_qza(here("00_raw_data/09_hospital_data_qiime2","taxonomy-CDI.qza"))
+
+taxonomy_table <- parse_taxonomy(taxonomy$data)
+
+tax_table <- do.call(rbind, strsplit(as.character(taxonomy$data$Taxon), "; "))
+colnames(tax_table) <- c("Kingdom","Phylum","Class","Order","Family","Genus","Species")
+rownames(tax_table) <- taxonomy$data$Feature.ID
+
+# Creating phyloseq object
+physeq <- phyloseq(
+  otu_table(ASVs$data, taxa_are_rows = TRUE),
+  phy_tree(tree$data),
+  tax_table(tax_table),
+  sample_data(metadata)
+)
+
+#Subset the data to keep only Receptor samples.
+physeq.rec <- subset_samples(physeq, sample.purpose == "Receptor")
+
+for(i in 1:nsamples(physeq.rec)) {
+  if(sample_data(physeq.rec)$time[i] <= 0){
+    sample_data(physeq.rec)$FMT_pre_post[i] <- "pre"
+  } else {
+    sample_data(physeq.rec)$FMT_pre_post[i] <- "post"
+  }
+}
+
+sample_data(physeq.rec)$FMT_pre_post <- as.factor(sample_data(physeq.rec)$FMT_pre_post)
+sample_data(physeq.rec)$FMT_pre_post <- relevel(sample_data(physeq.rec)$FMT_pre_post, "pre")
+levels(sample_data(physeq.rec)$FMT_pre_post)
+```
+
+```{r}
+#BiocManager::install("ALDEx2")
+#library(ALDEx2)
+
+#aldex2_da <- ALDEx2::aldex(data.frame(phyloseq::otu_table(physeq.rec)), phyloseq::sample_data(physeq.rec)$FMT_pre_post, test="t", effect = TRUE, denom="iqlr")
+
+## Vulcano plot for differentially expressed OTUs
+#ALDEx2::aldex.plot(aldex2_da, type="MW", test="wilcox", called.cex = 1, cutoff = 0.1)
+```
+
+
+```{r}
+ntaxa(physeq.rec)
+
+nsamples(physeq.rec)
+
+otu_table(physeq.rec)[1:5, 1:5]  
+
+tax_table(physeq.rec)[1:5, 1:4]
+```
+
+```{r}
+# Prune and rarefy samples
+
+# Keep samples with non-zero total taxa
+pruned <- prune_samples(sample_sums(physeq.rec) > 0, physeq.rec)
+
+# Check total taxa in each sample again
+sample_sums(pruned)
+
+#rarefy samples
+physeq_rarefy <- rarefy_even_depth(pruned, rngseed=1, sample.size=0.9*min(sample_sums(pruned)), replace=F)
+
+#Check the taxa prevalence at Phylum level
+#plot_taxa_prevalence(physeq_rarefy, "Order")
+```
+
+Barplots are a one way of visualising the composition of your samples. At Family level and relative abundance
+
+```{r}
+# convert to relative abundance  
+physeq.rec.rel <- microbiome::transform(physeq.rec, "compositional")
+
+physeq.rec.rel2 <- prune_taxa(taxa_sums(physeq.rec.rel) > 0, physeq.rec.rel)
+```
+
+Check for the core ASVs
+
+```{r}
+core.taxa.standard <- core_members(physeq.rec.rel2, detection = 0.001, prevalence = 50/100)
+print(core.taxa.standard)
+```
+
+we only see IDs, not very informative. We can get the classification of these as below.
+
+```{r}
+#install.packages('DT')
+library(DT)
+# Extract the taxonomy table
+taxonomy_core <- as.data.frame(tax_table(physeq.rec.rel2))
+
+# Subset this taxonomy table to include only core OTUs
+core_taxa_id <- subset(taxonomy_core, rownames(taxonomy_core) %in% core.taxa.standard)
+
+DT::datatable(core_taxa_id)
+```
+
+```{r}
+physeq.fam.rel <- physeq.rec %>%
+  aggregate_rare(level = "Family", detection = 1/100, prevalence = 75/100) %>%
+  microbiome::transform(transform = "compositional")
+
+plot_composition(physeq.fam.rel, sample.sort = "FMT_pre_post", x.label = "FMT_pre_post") + 
+  theme(legend.position = "bottom") + 
+  scale_fill_brewer("Family", palette = "Paired") + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, size = 10)) + 
+  ggtitle("Relative abundance") + 
+  theme(legend.title = element_text(size = 18))
+
+```
+
+```{r}
+library(RColorBrewer)
+
+physeq.fam.rel <- physeq.rec %>%
+  aggregate_rare(level = "Family", detection = 1/100, prevalence = 50/100) %>%
+  microbiome::transform(transform = "compositional") 
+
+colourCount = ntaxa(tax_table(physeq.fam.rel))
+getPalette = colorRampPalette(brewer.pal(13, "Paired"))
+
+plot_composition(physeq.fam.rel,
+                 average_by = "FMT_pre_post", 
+                 transform = "compositional") + 
+  scale_fill_manual(values = getPalette(colourCount)) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, size = 10)) + 
+  ggtitle("Relative abundance") + 
+  theme(legend.title = element_text(size = 18))
+```
+
+```{r}
+phyloseq::plot_bar(physeq.fam.rel, fill = "Family") +
+  geom_bar(aes(fill = Family), stat = "identity", position = "stack") +
+  labs(x = "", y = "Relative Abundance\n") +
+  facet_wrap(~ FMT_pre_post, scales = "free", nrow =2) +
+  theme(panel.background = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  scale_fill_manual(values = getPalette(colourCount))
+```
+
+```{r}
+# install.packages(
+#   "microViz",
+#   repos = c(davidbarnett = "https://david-barnett.r-universe.dev", getOption("repos"))
+# )
+#library(microViz)
+# 
+# physeq.rec <- physeq.rec %>%
+#  tax_fix(
+#   min_length = 4,
+#   unknowns = c("k__Bacteria", "p__Firmicutes", "p__Proteobacteria", "p__OD1 Phylum", "p__OD1"),
+#   sep = " ", anon_unique = TRUE,
+#   suffix_rank = "classified"
+#  )
+# 
+# 
+# plot_family <- comp_barplot(
+#   physeq.rec.rel2,
+#   "Family",
+#   n_taxa = 4,
+#   tax_order = sum,
+#   merge_other = TRUE,
+#   sample_order = "bray",
+#   order_with_all_taxa = FALSE,
+#   label = "SAMPLE",
+#   facet_by = "condition",
+#   bar_width = 1,
+#   bar_outline_colour = NA,
+#   #palette = distinct_palette(n_taxa),
+#   tax_transform_for_ordering = "identity",
+#   tax_transform_for_plot = "compositional",
+#   #seriate_method = "OLO_ward",
+#   keep_all_vars = TRUE,
+#   #interactive = FALSE,
+#   x = "SAMPLE"
+# )
+# 
+# plot_family
+```
+
+
+```{r}
+mycols <- c("coral", "steelblue2")
+
+physeq.fam <- aggregate_taxa(physeq.rec, "Family")
+top_f <- top_taxa(physeq.fam, 9)
+top_f
+
+top_fams <- plot_listed_taxa(physeq.fam, top_f, 
+                 group= "FMT_pre_post",
+                 group.colors = mycols,
+                 add.violin = F,
+                 dot.opacity = 0.25,
+                 box.opacity = 0.25,
+                 panel.arrange= "wrap")
+top_fams
+```
+
+
+```{r}
+dom.tax <- dominant_taxa(physeq.rec,level = "Family", group="FMT_pre_post")
+dom.tax_pre <- dom.tax$dominant_overview %>% filter(FMT_pre_post == "pre")
+dom.tax_post <- dom.tax$dominant_overview %>% filter(FMT_pre_post == "post")
+
+head(dom.tax$dominant_overview)
+
+head(dom.tax_pre, 10) %>%
+  flextable()
+```
+
+```{r}
+head(dom.tax_post, 10)%>%
+  flextable()
+```
+
+```{r}
+grp_abund <- get_group_abundances(physeq.rec, 
+                                  level = "Family", 
+                                  group="FMT_pre_post",
+                                  transform = "compositional")
+
+# clean names 
+grp_abund$OTUID <- gsub("f__", "",grp_abund$OTUID)
+grp_abund$OTUID <- ifelse(grp_abund$OTUID == "", 
+                          "Unclassified", grp_abund$OTUID)
+
+grp_abund_sorted <- grp_abund[order(grp_abund$mean_abundance, decreasing=TRUE),]
+
+
+mean.plot_sorted <- grp_abund_sorted[1:40,] %>% # input data
+  ggplot(aes(x= reorder(OTUID, mean_abundance), # reroder based on mean abundance
+             y= mean_abundance,
+             fill=FMT_pre_post)) + 
+  geom_bar(stat = "identity", 
+          position = position_dodge()) + 
+  scale_fill_manual("FMT_pre_post", values=mycols) + # manually specify colors
+  theme_bw() +
+  ylab("Mean Relative Abundance") + 
+  xlab("Family") + 
+  coord_flip() 
+# +
+#   scale_fill_manual(values = getPalette(3)) 
+
+mean.plot_sorted
+```
+
+Tree plot
+
+```{r}
+physeq_top_50 <- subset_taxa(physeq.rec, Kingdom=="k__Bacteria")
+physeq_top_50 <- prune_taxa(names(sort(taxa_sums(physeq_top_50),TRUE)[1:50]), physeq_top_50)
+
+# Color the nodes by category
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="FMT_pre_post")
+
+# Convert to radial tree
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="FMT_pre_post") + coord_polar(theta="y")
+```
+
+Lefse to test for differential abundance between categories
+
+from: https://rpubs.com/mohsen/lefse_analysis_cleaned_prevalence_phyloseq
+
+```{r}
+# Install microbiome marker package
+#remotes::install_version('ggplot2', version='3.3.6')
+#BiocManager::install("ggtree")
+#BiocManager::install("microbiomeMarker")
+
+# activate microbiome marker package 
+library(microbiomeMarker)
+
+# Differential abundance using lefse
+lefse <- run_lefse(physeq.rec,
+                   group = "FMT_pre_post",
+                   taxa_rank = "Family",
+                   wilcoxon_cutoff = 0.05,
+                   norm = "CPM",
+                   kw_cutoff = 0.05,
+                   multigrp_strat = TRUE,
+                   lda_cutoff = 2
+)
+
+
+#head(marker_table(lefse))
+
+# bar plot
+plot_ef_bar(lefse)
+# dot plot
+plot_ef_dot(lefse)
+
+```
+
+```{r}
+library(knitr)
+dat <- marker_table(lefse) %>% data.frame() %>% select(1:4)
+
+dat %>% flextable()
+```
+
+
+## Lefse with lefser package
+
+How to transform data in SE format: https://microbiome.github.io/OMA/data-introduction.html
+
+```{r}
+# #BiocManager::install("lefser")
+# library(lefser)
+# #BiocManager::install("microbiome/mia", version='3.14')
+# library(mia)
+# 
+# counts  <- ASVs$data   # Abundance table (e.g. ASV data; to assay data)
+# tax     <- tax_table     # Taxonomy table (to rowData)
+# samples <-  metadata  # Sample data (to colData)
+# se <- SummarizedExperiment(assays = list(counts = counts),
+#                            colData = samples,
+#                            rowData = tax)
+# 
+# # Goes through the whole DataFrame. Removes '.*[kpcofg]__' from strings, where [kpcofg] 
+# # is any character from listed ones, and .* any character.
+# rowdata_modified <- BiocParallel::bplapply(rowData(se), 
+#                                            FUN = stringr::str_remove, 
+#                                            pattern = '.*[kpcofg]__')
+# 
+# # Genus level has additional '\"', so let's delete that also
+# rowdata_modified <- BiocParallel::bplapply(rowdata_modified, 
+#                                            FUN = stringr::str_remove, 
+#                                            pattern = '\"')
+# 
+# # rowdata_modified is a list, so it is converted back to DataFrame format. 
+# rowdata_modified <- DataFrame(rowdata_modified)
+# 
+# # And then assigned back to the SE object
+# rowData(se) <- rowdata_modified
+# 
+# # Now we have a nicer table
+# head(rowData(se))
+# 
+# head(colData(se))
+# 
+# #add relative abundances along the original count data 
+# se <- relAbundanceCounts(se)
+# assays(se)
+# 
+# assays(se)$counts[1:5,1:7]
+# assay(se, "relabundance")[1:5,1:7]
+# 
+# dim(se)
+# 
+# #add phylogenetic tree
+# tse <- as(se, "TreeSummarizedExperiment")
+# # Add tree to rowTree
+# rowTree(tse) <- tree$data
+# # Check
+# tse
+# 
+# se <- tse
+# 
+# #head(rowTree(tse))
+# rowLinks(tse)
+# 
+# # subset by sample purpose
+# se_subset_by_sample <- se[ , se$sample.purpose %in% c("Receptor")]
+# 
+# # show dimensions
+# dim(se_subset_by_sample)
+# 
+# head(colData(se_subset_by_sample))
+# 
+# # add metadata column
+# 
+# for(i in 1:dim(se_subset_by_sample)[2]) {
+#   if(se_subset_by_sample$time[i] <= 0){
+#     se_subset_by_sample$FMT_pre_post[i] <- "pre"
+#   } else {
+#     se_subset_by_sample$FMT_pre_post[i] <- "post"
+#   }
+# }
+# 
+# 
+# # subset by sample and feature and get rid of NAs
+# se_subset_by_sample_feature <- se[rowData(se)$Phylum %in% c("Bacteria") & !is.na(rowData(se)$Phylum), se$sample.purpose %in% c("Receptor")]
+# 
+# # show dimensions
+# dim(se_subset_by_sample_feature)
+```
+
+```{r}
+# table(se_subset_by_sample$FMT_pre_post)
+```
+
+```{r}
+# res <- lefser(se_subset_by_sample, groupCol = "FMT_pre_post")
+# head(res)
+# lefserPlot(res)
+```
+
+### Donor data vs CDI data
+
+```{r}
+# Importing ASVs abundance file
+ASVs_merged <- read_qza(here("00_raw_data/09_hospital_data_qiime2","merged-table.qza"))
+
+# Importing metadata
+metadata_CDI <- read.delim(here("00_raw_data/07_hospital_CDI", "sample-metadata.tsv.gz"))
+metadata_CDI$time <- as.numeric(metadata_CDI$time)
+names(metadata_CDI)[names(metadata_CDI) == 'Sample.ID'] <- 'SampleID'
+names(metadata_CDI)[names(metadata_CDI) == 'sample.origin'] <- 'condition'
+
+
+for(i in 1:nrow(metadata_CDI)) {
+  if(metadata_CDI$time[i] <= 0 & !is.na(metadata_CDI$time[i])){
+    metadata_CDI$condition[i] <- paste(metadata_CDI$condition[i], "pre", sep="_")
+  } else if (metadata_CDI$time[i] > 0 & !is.na(metadata_CDI$time[i])) {
+    metadata_CDI$condition[i] <- paste(metadata_CDI$condition[i], "post", sep="_")
+  }
+}
+
+metadata_donor <- read.delim(here("00_raw_data/08_hospital_donor","sample-metadata.tsv.gz"))
+metadata_donor$condition <- "healthy_donors"
+names(metadata_donor)[names(metadata_donor) == 'sample_id'] <- 'SampleID'
+
+
+metadata_merged <- rbind.fill(metadata_CDI, metadata_donor)
+metadata_merged <- dplyr::select(metadata_merged, SampleID, condition)
+rownames(metadata_merged) <- metadata_merged[,1]
+
+
+# Importing tree
+tree_merged <- read_qza(here("00_raw_data/09_hospital_data_qiime2","rooted-tree-merged.qza"))
+
+# Importing taxonomy
+taxonomy_merged <- read_qza(here("00_raw_data/09_hospital_data_qiime2","taxonomy-merged.qza"))
+taxonomy_table_merged <- parse_taxonomy(taxonomy_merged$data)
+tax_table_merged <- do.call(rbind, strsplit(as.character(taxonomy_merged$data$Taxon), "; "))
+colnames(tax_table_merged) <- c("Kingdom","Phylum","Class","Order","Family","Genus","Species")
+rownames(tax_table_merged) <- taxonomy_merged$data$Feature.ID
+
+# Creating phyloseq object
+physeq_merged <- phyloseq(
+  otu_table(ASVs_merged$data, taxa_are_rows = TRUE),
+  phy_tree(tree_merged$data),
+  tax_table(tax_table_merged),
+  sample_data(metadata_merged)
+)
+
+#Subset the data to keep only Receptor samples.
+physeq_merged <- subset_samples(physeq_merged, condition == c("Cdif_pre", "Cdif_post", "healthy_donors"))
+
+sample_data(physeq_merged)$condition <- as.factor(sample_data(physeq_merged)$condition)
+sample_data(physeq_merged)$condition <- relevel(sample_data(physeq_merged)$condition, "Cdif_pre")
+levels(sample_data(physeq_merged)$condition)
+```
+
+Barplots :
+
+```{r}
+# convert to relative abundance  
+physeq.rel <- microbiome::transform(physeq_merged, "compositional")
+
+physeq.rel2 <- prune_taxa(taxa_sums(physeq.rel) > 0, physeq.rel)
+```
+
+
+```{r}
+physeq.fam.rel <- physeq_merged %>%
+  aggregate_rare(level = "Family", detection = 1/100, prevalence = 75/100) %>%
+  microbiome::transform(transform = "compositional")
+
+plot_composition(physeq.fam.rel, sample.sort = "condition", x.label = "condition") + 
+  theme(legend.position = "bottom") + 
+  scale_fill_brewer("Family", palette = "Paired") + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, size = 10)) + 
+  ggtitle("Relative abundance") + 
+  theme(legend.title = element_text(size = 18))
+```
+
+```{r}
+ library(RColorBrewer)
+
+physeq.fam.rel <- physeq_merged %>%
+  aggregate_rare(level = "Family", detection = 1/100, prevalence = 50/100) %>%
+  microbiome::transform(transform = "compositional") 
+
+colourCount = ntaxa(tax_table(physeq.fam.rel))
+getPalette = colorRampPalette(brewer.pal(13, "Paired"))
+
+plot_composition(physeq.fam.rel,
+                 average_by = "condition", 
+                 transform = "compositional") + 
+  scale_fill_manual(values = getPalette(colourCount)) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, size = 10)) + 
+  ggtitle("Relative abundance") + 
+  theme(legend.title = element_text(size = 18))
+```
+
+```{r}
+mycols <- c("coral", "steelblue2", "darkolivegreen2")
+
+physeq.fam <- aggregate_taxa(physeq_merged, "Family")
+
+sample_data(physeq.fam)$condition <- as.factor(str_replace(sample_data(physeq.fam)$condition, "Cdif_pre", "Pre"))
+sample_data(physeq.fam)$condition <- as.factor(str_replace(sample_data(physeq.fam)$condition, "Cdif_post", "Post"))
+sample_data(physeq.fam)$condition <- as.factor(str_replace(sample_data(physeq.fam)$condition, "healthy_donors", "Donors"))
+
+sample_data(physeq.fam)$condition <- relevel(sample_data(physeq.fam)$condition, ref = "Post")
+sample_data(physeq.fam)$condition <- relevel(sample_data(physeq.fam)$condition, ref = "Pre")
+
+top_f <- top_taxa(physeq.fam, 9)
+top_f
+
+top_fams <- plot_listed_taxa(physeq.fam,
+                             top_f,
+                             group= "condition",
+                             group.colors = mycols,
+                             add.violin = F,
+                             dot.opacity = 0.25,
+                             box.opacity = 0.25,
+                             panel.arrange= "wrap")
+top_fams
+```
+
+```{r}
+dom.tax <- dominant_taxa(physeq_merged, level = "Family", group="condition")
+dom.tax_pre <- dom.tax$dominant_overview %>% filter(condition == "Cdif_pre")
+dom.tax_post <- dom.tax$dominant_overview %>% filter(condition == "Cdif_post")
+dom.tax_donor <- dom.tax$dominant_overview %>% filter(condition == "healthy_donors")
+
+head(dom.tax_pre) %>%
+  flextable()
+```
+
+```{r}
+head(dom.tax_post)%>%
+  flextable()
+```
+
+```{r}
+head(dom.tax_donor)%>%
+  flextable()
+```
+
+
+```{r}
+grp_abund <- get_group_abundances(physeq_merged, 
+                                  level = "Family", 
+                                  group="condition",
+                                  transform = "compositional")
+
+# clean names 
+grp_abund$OTUID <- gsub("f__", "",grp_abund$OTUID)
+grp_abund$OTUID <- ifelse(grp_abund$OTUID == "", 
+                          "Unclassified", grp_abund$OTUID)
+
+grp_abund_sorted <- grp_abund[order(grp_abund$mean_abundance, decreasing=TRUE),]
+
+
+mean.plot_sorted <- grp_abund_sorted[1:40,] %>% # input data
+  ggplot(aes(x= reorder(OTUID, mean_abundance), # reroder based on mean abundance
+             y= mean_abundance,
+             fill=condition)) + 
+  geom_bar(stat = "identity", 
+          position = position_dodge()) + 
+  scale_fill_manual("condition", values=mycols) + # manually specify colors
+  theme_bw() +
+  ylab("Mean Relative Abundance") + 
+  xlab("Family") + 
+  coord_flip()
+
+mean.plot_sorted
+```
+
+Tree plot
+
+```{r}
+physeq_top_50 <- subset_taxa(physeq_merged, Kingdom=="k__Bacteria")
+physeq_top_50 <- prune_taxa(names(sort(taxa_sums(physeq_top_50),TRUE)[1:50]), physeq_top_50)
+
+# Color the nodes by category
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="condition")
+
+# Convert to radial tree
+plot_tree(physeq_top_50, nodelabf=nodeplotblank, label.tips="Genus", ladderize="left", color="condition") + coord_polar(theta="y")
+```
+
+Lefse to test for differential abundance between categories
+
+from: https://rpubs.com/mohsen/lefse_analysis_cleaned_prevalence_phyloseq
+
+```{r}
+# Differential abundance using lefse
+lefse <- run_lefse(physeq_merged,
+                   group = "condition",
+                   taxa_rank = "Family",
+                   wilcoxon_cutoff = 0.05,
+                   norm = "CPM",
+                   kw_cutoff = 0.05,
+                   multigrp_strat = TRUE,
+                   lda_cutoff = 2
+)
+
+# bar plot
+plot_ef_bar(lefse)
+# dot plot
+plot_ef_dot(lefse)
+```
+
+```{r}
+library(knitr)
+dat <- marker_table(lefse) %>% data.frame() %>% select(1:4)
+
+dat %>% flextable()
+```

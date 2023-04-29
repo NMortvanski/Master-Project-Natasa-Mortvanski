@@ -729,13 +729,38 @@ for (i in 1:length(metric)){
   progression[[i]] <- CDI_FMT %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color= CDI_FMT$animations_subj)) +
     geom_line()+
     geom_point()+
-    facet_wrap(dplyr::vars(CDI_FMT$animations_subject), scale="free", ncol=2)
+    facet_wrap(dplyr::vars(CDI_FMT$animations_subject), ncol=2)
 }
 
 progression
-
-#dplyr::vars(CDI_FMT$animations_subject)
 ```
+
+```{r}
+for (i in 1:length(metric)) {
+  progression[[i]] <- CDI_FMT %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color =CDI_FMT$animations_subj)) +
+    geom_line()+
+    geom_point() +
+    theme(legend.position="none")
+}
+
+grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], ncol=3)
+grid.arrange(progression[[6]], progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=3)
+```
+
+```{r}
+subjects <- unique(CDI_FMT$animations_subject)
+
+data <- CDI_FMT[CDI_FMT$animations_subject == subjects[1],]
+  
+for (i in 1:length(metric)) {
+  progression[[i]] <- data %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]])) +
+    geom_line()+
+    geom_point()
+}
+
+grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=3)
+```
+
 
 Even though the value is fluctuating as the time passes, we can see general trend of improvement of alpha diversity after FMT in all subjects.
 
