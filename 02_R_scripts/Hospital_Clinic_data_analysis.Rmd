@@ -123,6 +123,49 @@ grid.arrange(violin_hospital_2[[1]], violin_hospital_2[[2]], violin_hospital_2[[
 ```
 
 ```{r}
+library(ggpubr)
+
+hospital_CDI$condition[hospital_CDI$condition=="Cdif_post"] <- "CDIpost"
+hospital_CDI$condition[hospital_CDI$condition=="Cdif_pre"] <- "CDIpre"
+
+my_comparisons <- list( c("CDIpost","CDIpre"),  c("CDIpost","donor"), c("CDIpre","donor"))
+
+violin <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+
+  violin[[i]] <- ggviolin(hospital_CDI, x = "condition", y = metric[i], fill = "condition", alpha = 0.8,
+           palette = "Dark2", order = c("CDIpre", "CDIpost", "donor"),
+           add = c("boxplot"), add.params = list(fill = "white")) +
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif") +
+    #stat_compare_means (label.y = max(hospital_CDI[[metric[i]]]*1.1)) +
+    xlab("")+
+    font("xy.text", size = 10) +
+    rremove("legend") 
+}
+
+grid.arrange(violin[[1]], violin[[2]], violin[[3]], violin[[4]], violin[[5]], violin[[6]], ncol=3) 
+grid.arrange(violin[[7]], violin[[8]], violin[[9]], violin[[10]], ncol=3) 
+```
+
+```{r}
+box <- vector('list', length(metric))
+
+for (i in 1:length(metric)){
+
+  box[[i]] <- ggboxplot(hospital_CDI, x = "condition", y = metric[i], color = "condition",
+           palette = "Dark2", order = c("CDIpre", "CDIpost", "donor")) +
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif") +
+    xlab("")+
+    font("xy.text", size = 10) +
+    rremove("legend") 
+}
+
+grid.arrange(box[[1]], box[[2]], box[[3]], box[[4]], box[[5]], box[[6]], ncol=3) 
+grid.arrange(box[[7]], box[[8]], box[[9]], box[[10]], ncol=3) 
+```
+
+```{r}
 test_CDI_hospital <- list()
 
 test_CDI_hospital <- do_wilcox_test(hospital_CDI, "condition")
@@ -229,19 +272,42 @@ all_data_comparison <- rbind.fill(all_healthy, CDI, hospital_donor, hospital_CDI
   
 all_data_comparison <- dplyr::select(all_data_comparison, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, gini_index, strong, pielou_evenness, faith_pd, condition)
 
-all_data_comparison$condition[all_data_comparison$condition=="healthy"] <- "healthy_AGP"
-all_data_comparison$condition[all_data_comparison$condition=="CDI"] <- "CDI_BioProject"
-all_data_comparison$condition[all_data_comparison$condition=="Cdif_post"] <- "hospital_CDI_post"
-all_data_comparison$condition[all_data_comparison$condition=="Cdif_pre"] <- "hospital_CDI_pre"
+all_data_comparison$condition[all_data_comparison$condition=="healthy"] <- "AGP"
+all_data_comparison$condition[all_data_comparison$condition=="CDI"] <- "CDI"
+all_data_comparison$condition[all_data_comparison$condition=="Cdif_post"] <- "hCDIpost"
+all_data_comparison$condition[all_data_comparison$condition=="Cdif_pre"] <- "hCDIpre"
+all_data_comparison$condition[all_data_comparison$condition=="healthy_donors"] <- "donors"
+all_data_comparison$condition[all_data_comparison$condition=="donor"] <- "donors"
 
 violin_hospital_compare <- vector('list', length(metric))
 
 violin_hospital_compare <- plot_violin(all_data_comparison, "condition")
 
+# PNG device
+#jpeg("my_plot.jpeg", quality = 100)
 
 grid.arrange(violin_hospital_compare[[1]], violin_hospital_compare[[2]], violin_hospital_compare[[3]], violin_hospital_compare[[4]], ncol=2) 
+
+#dev.off()
+
 grid.arrange(violin_hospital_compare[[5]], violin_hospital_compare[[6]], violin_hospital_compare[[7]], violin_hospital_compare[[8]], ncol=2) 
 grid.arrange(violin_hospital_compare[[9]], violin_hospital_compare[[10]], ncol=2)
 
+grid.arrange(violin_hospital_compare[[1]], violin_hospital_compare[[2]], violin_hospital_compare[[3]], violin_hospital_compare[[4]], violin_hospital_compare[[5]], violin_hospital_compare[[6]], violin_hospital_compare[[7]], violin_hospital_compare[[8]], violin_hospital_compare[[9]], ncol=3) 
+
 table(all_data_comparison$condition)
 ```
+```{r}
+library(ggpubr)
+my_comparisons <- list( c("AGP","CDI"),  c("AGP","donors"), c("AGP","hCDIpost"), c("AGP","hCDIpre"),  c("CDI","donors"), c("CDI","hCDIpost"), c("CDI","hCDIpre"), c("donors","hCDIpost"), c("donors","hCDIpre"), c("hCDIpost","hCDIpre"))
+#my_comparisons <- combn(unique(all_data_comparison$condition), 2, FUN=paste, collapse=',', simplify=FALSE)
+
+ggviolin(all_data_comparison, x = "condition", y = "shannon_entropy", fill = "condition",
+         palette = "Dark2",
+         add = "boxplot", add.params = list(fill = "white"))+
+  stat_compare_means(comparisons = my_comparisons, label = "p.signif") # Add significance levels
+  #stat_compare_means(label.y = 50)                                      # Add global the p-value 
+
+combn(unique(all_data_comparison$condition), 2, FUN=paste, collapse=',', simplify=FALSE)
+```
+

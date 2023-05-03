@@ -127,6 +127,7 @@ print(table_one, nonnormal = metric)
 all_data$condition <- as.factor(all_data$condition)
 all_data$condition <- ordered(all_data$condition, levels = c("healthy", "CD", "UC", "CDI", "CDI + CD", "CDI + UC"))
 table1(~ chao1 + margalef + menhinick + fisher_alpha + faith_pd + gini_index + strong + pielou_evenness + shannon_entropy + simpson | condition, data=all_data)
+#table_test <- data.frame(table1(~ chao1 + margalef + menhinick + fisher_alpha + faith_pd + gini_index + strong + pielou_evenness + shannon_entropy + simpson | condition, data=all_data))
 ```
 
 

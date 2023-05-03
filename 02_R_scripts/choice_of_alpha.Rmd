@@ -358,10 +358,19 @@ i_scores <- i_scores %>% tibble::rownames_to_column("var")
 i_scores$var<- i_scores$var %>% as.factor()
 
 #Plotting the bar and polar charts for comparing variables
-i_scores %>% ggplot(aes(x = .data[["healthy"]], y=reorder(var, .data[["healthy"]]), fill = var)) + 
+importance_plot <- i_scores %>% ggplot(aes(x = .data[["healthy"]], y=reorder(var, .data[["healthy"]]), fill = var)) + 
   geom_bar(stat = "identity", show.legend = FALSE, width = 1) + 
   labs(x = NULL, y = NULL, title ="Mean descrease in accuracy for condition category: healthy") + 
   theme_minimal() 
+
+# BMP device
+jpeg("importance_plot.jpeg", quality = 100)
+
+# Code
+plot(importance_plot)
+
+# Close device
+dev.off()
 ```
 
 Hospital Clínic's data:
@@ -457,13 +466,20 @@ eff_size <- tibble[, !names(tibble) %in% c("group1", "group2")]
 
 tests_1 <- inner_join(tests_1, eff_size , by= "parameter")
 
-tests_1 %>% 
+test_1_show <- tests_1 %>% 
   add_column(p.adjusted = round(p.adjust(tests_1$p.value, "fdr"), 5), .after='p.value') %>%
-  arrange(-effsize)  %>%
+  arrange(-effsize)  
+
+test_1_show %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Wilcox test for distributions of healthy vs unhealthy samples")
+
+#write.csv(tests_1, gzfile(here("03_plots_and_tables", "eff_size.csv")), row.names=FALSE)
+#install.packages("writexl")
+library(writexl)
+write_xlsx(test_1_show, here("03_plots_and_tables", "eff_size.xlsx"))
 ```
 
 Lets try calculating statistical power in a subset of data with equal number of healthy and unhealthy samples:
@@ -617,12 +633,13 @@ library(table1)
 CrawfordHowell <- function(case, control){
   tval <- (case - mean(control)) / (sd(control)*sqrt((length(control)+1) / length(control)))
   degfree <- length(control)-1
-  pval <- 2*(1-pt(abs(tval), df=degfree)) #two-tailed p-value
+  pval <- pt(tval, df=degfree) #one-tailed T test
   result <- data.frame(t = tval, df = degfree, p=pval)
   return(result)
 }
 
-#table_list <- list()
+table_list <- list()
+all_tables <- data.frame()
 
 for (i in 1:length(metric)){
 
@@ -640,50 +657,40 @@ for (i in 1:length(metric)){
     t_test_results$metric <- test_samples[[metric[i]]]
     t_test_results$t_statistic <- unlist(t_statistics)
     t_test_results$t_probability <- unlist(t_prob)
-    
-    #table_list[[i]] <- t_test_results
-    
-    print(table1(~ metric + t_probability | condition, data=t_test_results, caption = paste("Results for alpha metric:", metric[i], " ")))
-}
-
-# for (i in 1:length(metric)){
-#   table1(~ metric + t_probability | condition, data=table_list[[i]], caption = paste("Results for alpha metric:", metric[i], " "))
-# }
-
-```
-
-
-```{r}
-library(table1)
-
-table_list <- list()
-
-for (i in 1:length(metric)){
-    mean_healthy <- mean(healthy_popul[[metric[i]]])
-    SD_healthy <- sd(healthy_popul[[metric[i]]])
-    
-    t_statistics <- list()
-    t_prob <- list()
-    t_test_results <- data.frame()
-    
-    for (n in 1:nrow(test_samples)){
-      x <- test_samples[[metric[i]]][n]
-      t_stat_x <- (x-mean_healthy)/(SD_healthy*sqrt((nrow(healthy_popul)+1)/nrow(healthy_popul)))
-      t_statistics <- append(t_statistics, t_stat_x)
-      t_prob_x <- pt(t_stat_x, df=nrow(healthy_popul)-1)
-      t_prob <- append(t_prob, t_prob_x)
-    }
-    
-    t_test_results <- test_samples[, c("sample_id", "condition")]
-    t_test_results$metric <- test_samples[[metric[i]]]
-    t_test_results$t_statistic <- unlist(t_statistics)
-    t_test_results$t_probability <- unlist(t_prob)
+    t_test_results$t_probability <- round(t_test_results$t_probability, digits=3)
     
     table_list[[i]] <- t_test_results
     
-    print(table1(~ metric + t_probability | condition, data=t_test_results, caption = paste("Results for alpha metric:", metric[i], " ")))
+    all_tables_next <- data.frame(table1(~ t_probability | condition, data=t_test_results, overall=F, render.continuous=c("Mean (Min, Max)"="MEAN (MIN, MAX)")))
+    all_tables <- rbind(all_tables, all_tables_next)
 }
+
+# Loop through each row of the merged data frame and add names of metrics
+
+replacement_index <- 0
+
+for (i in 1:nrow(all_tables)) {
+  # Check if the value in the first column is "t_probability"
+  if (all_tables[i, 1] == "t_probability") {
+    # Calculate the index for replacement from the replacement list
+    replacement_index <- replacement_index + 1
+    # Substitute the value with the replacement value
+    all_tables[i, 1] <- metric[replacement_index]
+  }
+}
+
+rows_to_remove <- grepl("^\\(N\\=?", all_tables[,2])
+rows_to_remove[1] <- FALSE
+all_tables <- all_tables[!rows_to_remove, ]
 ```
+
+```{r}
+library(writexl)
+write_xlsx(all_tables, here("03_plots_and_tables", "t_test.xlsx"))
+
+all_tables %>% flextable()
+```
+
 
 ```{r}
 for (i in 1:length(metric)){
@@ -692,11 +699,6 @@ p<- ggplot(table_list[[i]], aes(x=t_probability, color=condition)) +
 
 print(p)
 }
-```
-
-```{r}
-table_list[[6]]$t_probability <- round(p.adjust(table_list[[6]]$t_probability, "fdr"), digits=5)
-table1(~ metric + t_probability | condition, data=table_list[[6]], caption ="Results for alpha metric:  gini_index ")
 ```
 
 ```{r}
@@ -727,35 +729,31 @@ table1(~ strong + t_probability | condition, data=t_test_results, caption = "Res
 ```{r}
 set.seed(1)
 
+all_healthy_donors <- rbind.fill(hospital_donor, hospital_CDI[hospital_CDI$condition=="donor",])
+all_healthy_donors[all_healthy_donors == "healthy_donors"] <- 'donor'
+
 #use 70% of dataset as healthy population and 30% as healthy samples to test 
-sample <- sample(c(TRUE, FALSE), nrow(hospital_donor), replace=TRUE, prob=c(0.7,0.3))
-healthy_popul  <- hospital_donor[sample, ]
-healthy_test   <- hospital_donor[!sample, ]
+sample <- sample(c(TRUE, FALSE), nrow(all_healthy_donors), replace=TRUE, prob=c(0.7,0.3))
+healthy_popul  <- all_healthy_donors[sample, ]
+healthy_test   <- all_healthy_donors[!sample, ]
 
 nrow(healthy_popul)
 nrow(healthy_test)
 
 # samples to test 
-test_samples <- rbind.fill(healthy_test, hospital_CDI)
+test_samples <- rbind.fill(healthy_test, hospital_CDI[hospital_CDI$condition!="donor",])
+test_samples[test_samples == "healthy_donors"] <- 'donor'
 
 #test_samples <- rbind.fill(healthy_popul, CDI)
 
+table(healthy_popul$condition)
+table(test_samples$condition)
 
 nrow(test_samples)
 ```
 
 ```{r}
-library(table1)
-
-CrawfordHowell <- function(case, control){
-  tval <- (case - mean(control)) / (sd(control)*sqrt((length(control)+1) / length(control)))
-  degfree <- length(control)-1
-  pval <- 2*(1-pt(abs(tval), df=degfree)) #two-tailed p-value
-  result <- data.frame(t = tval, df = degfree, p=pval)
-  return(result)
-}
-
-#table_list <- list()
+all_tables_2 <- data.frame()
 
 for (i in 1:length(metric)){
 
@@ -773,16 +771,37 @@ for (i in 1:length(metric)){
     t_test_results$metric <- test_samples[[metric[i]]]
     t_test_results$t_statistic <- unlist(t_statistics)
     t_test_results$t_probability <- unlist(t_prob)
-    
-    #table_list[[i]] <- t_test_results
-    
-    print(table1(~ metric + t_probability | condition, data=t_test_results, caption = paste("Results for alpha metric:", metric[i], " ")))
+    t_test_results$t_probability <- round(t_test_results$t_probability, digits=3)
+
+
+    all_tables_next <- data.frame(table1(~ t_probability | condition, data=t_test_results, overall=F, render.continuous=c("Mean (Min, Max)"="MEAN (MIN, MAX)")))
+    all_tables_2 <- rbind(all_tables_2, all_tables_next)
 }
 
-# for (i in 1:length(metric)){
-#   table1(~ metric + t_probability | condition, data=table_list[[i]], caption = paste("Results for alpha metric:", metric[i], " "))
-# }
+# Loop through each row of the merged data frame and add names of metrics
 
+replacement_index <- 0
+
+for (i in 1:nrow(all_tables_2)) {
+  # Check if the value in the first column is "t_probability"
+  if (all_tables_2[i, 1] == "t_probability") {
+    # Calculate the index for replacement from the replacement list
+    replacement_index <- replacement_index + 1
+    # Substitute the value with the replacement value
+    all_tables_2[i, 1] <- metric[replacement_index]
+  }
+}
+
+rows_to_remove <- grepl(c("^\\(N\\=?"), all_tables_2[,2])
+rows_to_remove[1] <- FALSE
+all_tables_2 <- all_tables_2[!rows_to_remove, ]
+```
+
+```{r}
+library(writexl)
+write_xlsx(all_tables_2, here("03_plots_and_tables", "t_test_hospital.xlsx"))
+
+all_tables_2 %>% flextable()
 ```
 
 ## Visualising the difference
