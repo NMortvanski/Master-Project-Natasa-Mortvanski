@@ -53,6 +53,15 @@ CDI <- read.csv(here("01_tidy_data", "ncbi_CDI.csv.gz"), header = TRUE, sep = ",
 # Load CDI and donor data from Hospital Clínic
 hospital_CDI <- read.csv(here("01_tidy_data", "hosp_CDI.csv.gz"), header = TRUE, sep = ",")
 hospital_donor <- read.csv(here("01_tidy_data", "hosp_donor.csv.gz"), header = TRUE, sep = ",")
+
+hospital_CDI_donors <- hospital_CDI %>%
+  filter(condition == "donor")
+
+hospital_CDI <- rbind.fill(hospital_donor, hospital_CDI)
+hospital_CDI$condition[hospital_CDI$condition=="Cdif_post"] <- "CDIpost"
+hospital_CDI$condition[hospital_CDI$condition=="Cdif_pre"] <- "CDIpre"
+hospital_CDI$condition[hospital_CDI$condition=="healthy_donors"] <- "donor"
+
 ```
 
 
@@ -125,9 +134,6 @@ grid.arrange(violin_hospital_2[[1]], violin_hospital_2[[2]], violin_hospital_2[[
 ```{r}
 library(ggpubr)
 
-hospital_CDI$condition[hospital_CDI$condition=="Cdif_post"] <- "CDIpost"
-hospital_CDI$condition[hospital_CDI$condition=="Cdif_pre"] <- "CDIpre"
-
 my_comparisons <- list( c("CDIpost","CDIpre"),  c("CDIpost","donor"), c("CDIpre","donor"))
 
 violin <- vector('list', length(metric))
@@ -146,6 +152,8 @@ for (i in 1:length(metric)){
 
 grid.arrange(violin[[1]], violin[[2]], violin[[3]], violin[[4]], violin[[5]], violin[[6]], ncol=3) 
 grid.arrange(violin[[7]], violin[[8]], violin[[9]], violin[[10]], ncol=3) 
+
+#table(hospital_CDI$condition)
 ```
 
 ```{r}
@@ -184,10 +192,7 @@ test_CDI_hospital_1
 Lets see how different is alpha diversity of first and second dataset's donor data from Hospital Clínic:
 
 ```{r}
-hospital_donor_first <- hospital_CDI %>%
-  filter(condition == "donor")
-
-compare_donors <- rbind.fill(hospital_donor, hospital_donor_first)
+compare_donors <- rbind.fill(hospital_donor, hospital_CDI)
 
 compare_donors$condition <- as.factor(compare_donors$condition)
 
@@ -196,13 +201,25 @@ table(compare_donors$condition)
 ```
 
 ```{r}
-for (i in 1:length(metric)){
-p<- compare_donors %>% ggplot(aes(x=.data[[metric[i]]], color=condition)) +
-  geom_density()
+box_sig <- vector('list', length(metric))
+my_comparisons <- list(c("healthy_donors","donor"), c("healthy_donors","CDIpost"), c("healthy_donors","CDIpre"), c("donor","CDIpost"), c("donor","CDIpre"), c("CDIpost","CDIpre"))
 
-print(p)
+for (i in 1:length(metric)){
+  
+box_sig[[i]] <- ggboxplot(compare_donors, x = "condition", y = metric[i], color = "condition",
+           palette = "Dark2", order = c("CDIpre", "CDIpost", "healthy_donors", "donor"),
+           outlier.shape =NA) +
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif") +
+    xlab("")+
+    font("xy.text", size = 7) +
+    rremove("legend") 
 }
+
+grid.arrange(box_sig[[1]], box_sig[[2]], box_sig[[3]], box_sig[[4]], box_sig[[5]], ncol=3) 
+grid.arrange(box_sig[[6]], box_sig[[7]], box_sig[[8]], box_sig[[9]], box_sig[[10]], ncol=3) 
+
 ```
+
 
 ```{r}
 test_donors <- list()
@@ -220,64 +237,14 @@ test_donors_1 <- test_donors %>%
 test_donors_1
 ```
 
-Lets see how alpha diversity of CDI data before FMT diverges from stool donor data from Hospital Clínic:
-
-```{r}
-hospital_CDI_pre_FMT <- hospital_CDI %>%
-  filter(FMT_pre_post == "pre")
-
-compare_hospital <- rbind.fill(hospital_donor, hospital_CDI_pre_FMT)
-
-compare_hospital$condition <- as.factor(compare_hospital$condition)
-
-# Sizes of each dataset
-table(compare_hospital$condition)
-```
-
-```{r}
-table1(~ chao1 + margalef + menhinick + fisher_alpha + faith_pd + gini_index + strong + pielou_evenness + shannon_entropy + simpson | condition, data=compare_hospital)
-```
-
-```{r}
-violin_compare <- vector('list', length(metric))
-
-violin_compare <- plot_violin(compare_hospital, "condition")
-
-#violin_compare
-
-grid.arrange(violin_compare[[1]], violin_compare[[2]], violin_compare[[3]], violin_compare[[4]], violin_compare[[5]], violin_compare[[6]], violin_compare[[7]], violin_compare[[8]], violin_compare[[9]], violin_compare[[10]], ncol=3) 
-```
-
-```{r}
-test_CDI_healthy <- list()
-
-test_CDI_healthy <- do_wilcox_test(compare_hospital, "condition")
-
-test_CDI_healthy_1 <- test_CDI_healthy %>% 
-  add_column(p.adjusted = round(p.adjust(test_CDI_healthy$p.value, "fdr"), digits=5), .after='p.value') %>%
-  arrange(p.value, parameter)  %>%
-  flextable() %>% 
-  bold(~ p.value < 0.05, 4) %>%
-  bold(~ p.adjusted < 0.05, 5) %>%
-  add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for distributions of Hospital Clínic's CDI samples vs healthy control")
-
-test_CDI_healthy_1
-```
-
-
 Compare Hospital's data to AGP healthy data and CDI dataset from BioProject:
 
 ```{r}
-all_data_comparison <- rbind.fill(all_healthy, CDI, hospital_donor, hospital_CDI)
+all_data_comparison <- rbind.fill(all_healthy, CDI, hospital_CDI)
   
 all_data_comparison <- dplyr::select(all_data_comparison, shannon_entropy, chao1, menhinick, margalef, fisher_alpha, simpson, gini_index, strong, pielou_evenness, faith_pd, condition)
 
 all_data_comparison$condition[all_data_comparison$condition=="healthy"] <- "AGP"
-all_data_comparison$condition[all_data_comparison$condition=="CDI"] <- "CDI"
-all_data_comparison$condition[all_data_comparison$condition=="Cdif_post"] <- "hCDIpost"
-all_data_comparison$condition[all_data_comparison$condition=="Cdif_pre"] <- "hCDIpre"
-all_data_comparison$condition[all_data_comparison$condition=="healthy_donors"] <- "donors"
-all_data_comparison$condition[all_data_comparison$condition=="donor"] <- "donors"
 
 violin_hospital_compare <- vector('list', length(metric))
 
@@ -299,10 +266,9 @@ table(all_data_comparison$condition)
 ```
 ```{r}
 library(ggpubr)
-my_comparisons <- list( c("AGP","CDI"),  c("AGP","donors"), c("AGP","hCDIpost"), c("AGP","hCDIpre"),  c("CDI","donors"), c("CDI","hCDIpost"), c("CDI","hCDIpre"), c("donors","hCDIpost"), c("donors","hCDIpre"), c("hCDIpost","hCDIpre"))
-#my_comparisons <- combn(unique(all_data_comparison$condition), 2, FUN=paste, collapse=',', simplify=FALSE)
+my_comparisons <- list( c("AGP","CDI"),  c("AGP","donor"), c("AGP","CDIpost"), c("AGP","CDIpre"),  c("CDI","donor"), c("CDI","CDIpost"), c("CDI","CDIpre"), c("donor","CDIpost"), c("donor","CDIpre"), c("CDIpost","CDIpre"))
 
-ggviolin(all_data_comparison, x = "condition", y = "shannon_entropy", fill = "condition",
+ggviolin(all_data_comparison, x = "condition", y = "simpson", fill = "condition",
          palette = "Dark2",
          add = "boxplot", add.params = list(fill = "white"))+
   stat_compare_means(comparisons = my_comparisons, label = "p.signif") # Add significance levels
@@ -311,3 +277,44 @@ ggviolin(all_data_comparison, x = "condition", y = "shannon_entropy", fill = "co
 combn(unique(all_data_comparison$condition), 2, FUN=paste, collapse=',', simplify=FALSE)
 ```
 
+```{r}
+box_sig <- vector('list', length(metric))
+my_comparisons <- list( c("AGP","CDI"),  c("AGP","donor"), c("AGP","CDIpost"), c("AGP","CDIpre"),  c("CDI","donor"), c("CDI","CDIpost"), c("CDI","CDIpre"), c("donor","CDIpost"), c("donor","CDIpre"), c("CDIpost","CDIpre"))
+
+for (i in 1:length(metric)){
+  
+box_sig[[i]] <- ggboxplot(all_data_comparison, x = "condition", y = metric[i], color = "condition",
+           palette = "Dark2", order = c("CDI", "CDIpre", "CDIpost", "donor", "AGP"),
+           outlier.shape =NA) +
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif") +
+    xlab("")+
+    font("xy.text", size = 7) +
+    rremove("legend") 
+}
+
+grid.arrange(box_sig[[1]], box_sig[[2]], box_sig[[3]], box_sig[[4]], box_sig[[5]], ncol=3) 
+grid.arrange(box_sig[[6]], box_sig[[7]], box_sig[[8]], box_sig[[9]], box_sig[[10]], ncol=3) 
+
+```
+
+```{r}
+box_2 <- vector('list', length(metric))
+  
+for (i in 1:length(metric)){
+  plot_data <- all_data_comparison %>% dplyr::group_by(condition) %>% dplyr::mutate(m = mean(.data[[metric[i]]])) 
+
+  box_2[[i]] <- plot_data %>% ggplot(aes( x = reorder(condition, m), y = .data[[metric[i]]], color = condition)) +
+    geom_boxplot()+ #outlier.shape = NA
+    labs(x = metric[i])+
+    xlab("")+
+    theme_classic()+
+    font("xy.text", size = 7) +
+    #rotate_x_text(30) +
+    rremove("legend") +
+    scale_fill_brewer(palette="Dark2") 
+}
+
+grid.arrange(box_2[[1]], box_2[[2]], box_2[[3]], box_2[[4]], box_2[[5]], box_2[[6]], ncol=3) 
+grid.arrange(box_2[[7]], box_2[[8]], box_2[[9]], box_2[[10]], ncol=3) 
+
+```

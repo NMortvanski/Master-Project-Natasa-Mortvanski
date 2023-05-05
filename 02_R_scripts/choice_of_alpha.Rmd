@@ -31,6 +31,7 @@ library(gridExtra)
 library(grid)
 #install.packages("moments")
 library(moments)
+library(writexl)
 ```
 
 ```{r}
@@ -363,14 +364,7 @@ importance_plot <- i_scores %>% ggplot(aes(x = .data[["healthy"]], y=reorder(var
   labs(x = NULL, y = NULL, title ="Mean descrease in accuracy for condition category: healthy") + 
   theme_minimal() 
 
-# BMP device
-jpeg("importance_plot.jpeg", quality = 100)
-
-# Code
-plot(importance_plot)
-
-# Close device
-dev.off()
+importance_plot
 ```
 
 Hospital Clínic's data:
@@ -620,6 +614,8 @@ nrow(healthy_test)
 
 # samples to test 
 test_samples <- rbind.fill(healthy_test, CDI)
+test_samples$condition <- as.factor(test_samples$condition)
+test_samples$condition <- relevel(test_samples$condition, "healthy")
 
 #test_samples <- rbind.fill(healthy_popul, CDI)
 
@@ -685,20 +681,60 @@ all_tables <- all_tables[!rows_to_remove, ]
 ```
 
 ```{r}
-library(writexl)
+list_count <- list()
+
+for (i in 1:length(metric)){
+  max_CDI <- max( table_list[[i]][table_list[[i]]$condition == "CDI" ,]$t_probability)
+  lower_than_CDI <- sum(table_list[[i]][ table_list[[i]]$condition == "healthy" ,]$t_probability < max_CDI)
+  list_count <- append(list_count, lower_than_CDI)
+}
+
+overlap_df <- data.frame(Parameter = metric, Overlaped_samples = unlist(list_count))
+
+overlap_df
+
+write_xlsx(overlap_df, here("03_plots_and_tables", "overlap_1.xlsx"))
+```
+
+```{r}
 write_xlsx(all_tables, here("03_plots_and_tables", "t_test.xlsx"))
 
 all_tables %>% flextable()
 ```
 
+```{r}
+p<- vector("list", length(metric))
+
+for (i in 1:length(metric)){
+p[[i]] <- ggplot(table_list[[i]], aes(x=t_probability, color=condition)) +
+  #geom_histogram(stat="bin", bins=40, position=position_dodge())+
+  geom_density( adjust = 1/6) +
+  geom_hline(yintercept=0, colour="white", size=0.5) +
+  ggtitle(metric[i])+
+  theme(legend.position = "none", plot.title = element_text(size=10)) +
+  xlab("")
+}
+
+grid.arrange(p[[1]], p[[2]], p[[3]], p[[4]], p[[5]], p[[6]],p[[7]], p[[8]],p[[9]], p[[10]], ncol=4)
+```
 
 ```{r}
-for (i in 1:length(metric)){
-p<- ggplot(table_list[[i]], aes(x=t_probability, color=condition)) +
-  geom_density()
+p<- vector("list", length(metric))
 
-print(p)
+for (i in 1:length(metric)){
+p[[i]] <- ggplot(table_list[[i]], aes(x=t_probability, fill=condition)) +
+  geom_histogram(stat="bin", bins=40, position= "identity", alpha=0.7)+
+  #geom_density() +
+  xlab("")+
+  ylab("")+
+  ggtitle(metric[i])+
+  theme(legend.position = "none", plot.title = element_text(size=10)) +
+  xlab("")+
+  ylab("")+
+  ggtitle(metric[i])
 }
+
+grid.arrange(p[[1]], p[[2]], p[[3]], p[[4]], p[[5]], p[[6]],p[[7]], p[[8]],p[[9]], p[[10]], ncol=4)
 ```
 
 ```{r}
@@ -727,15 +763,16 @@ table1(~ strong + t_probability | condition, data=t_test_results, caption = "Res
 ## Hospital Clćnic's data
 
 ```{r}
+## First option - mix donor samples from CDI data set and stool donor data set and saple control population from this
 set.seed(1)
 
 all_healthy_donors <- rbind.fill(hospital_donor, hospital_CDI[hospital_CDI$condition=="donor",])
 all_healthy_donors[all_healthy_donors == "healthy_donors"] <- 'donor'
 
 #use 70% of dataset as healthy population and 30% as healthy samples to test 
-sample <- sample(c(TRUE, FALSE), nrow(all_healthy_donors), replace=TRUE, prob=c(0.7,0.3))
-healthy_popul  <- all_healthy_donors[sample, ]
-healthy_test   <- all_healthy_donors[!sample, ]
+sample <- sample(c(TRUE, FALSE), nrow(hospital_donor), replace=TRUE, prob=c(0.7,0.3))
+healthy_popul  <- hospital_donor[sample, ]
+healthy_test   <- hospital_donor[!sample, ]
 
 nrow(healthy_popul)
 nrow(healthy_test)
@@ -744,16 +781,31 @@ nrow(healthy_test)
 test_samples <- rbind.fill(healthy_test, hospital_CDI[hospital_CDI$condition!="donor",])
 test_samples[test_samples == "healthy_donors"] <- 'donor'
 
-#test_samples <- rbind.fill(healthy_popul, CDI)
-
 table(healthy_popul$condition)
 table(test_samples$condition)
 
 nrow(test_samples)
+
+
+# Second option - use stool biobank data set as control
+
+healthy_popul <- hospital_donor
+test_samples <- hospital_CDI
+
 ```
 
 ```{r}
+# modified t-test for upper tail
+CrawfordHowell_2 <- function(case, control){
+  tval <- (case - mean(control)) / (sd(control)*sqrt((length(control)+1) / length(control)))
+  degfree <- length(control)-1
+  pval <- pt(tval, df=degfree, lower.tail=FALSE) 
+  result <- data.frame(t = tval, df = degfree, p=pval)
+  return(result)
+}
+
 all_tables_2 <- data.frame()
+table_list_2 <-  list()
 
 for (i in 1:length(metric)){
 
@@ -762,7 +814,11 @@ for (i in 1:length(metric)){
     result <- data.frame()
     
     for (n in 1:nrow(test_samples)){
-      result <- CrawfordHowell(test_samples[[metric[i]]][n], healthy_popul[[metric[i]]]) 
+      if(metric[i] != "gini_index" & metric[i] != "strong"){
+        result <- CrawfordHowell(test_samples[[metric[i]]][n], healthy_popul[[metric[i]]]) 
+      } else {
+        result <- CrawfordHowell_2(test_samples[[metric[i]]][n], healthy_popul[[metric[i]]])
+      }
       t_statistics <- append(t_statistics, result[1])
       t_prob <- append(t_prob, result[3])
     }
@@ -772,7 +828,8 @@ for (i in 1:length(metric)){
     t_test_results$t_statistic <- unlist(t_statistics)
     t_test_results$t_probability <- unlist(t_prob)
     t_test_results$t_probability <- round(t_test_results$t_probability, digits=3)
-
+    
+    table_list_2[[i]] <- t_test_results
 
     all_tables_next <- data.frame(table1(~ t_probability | condition, data=t_test_results, overall=F, render.continuous=c("Mean (Min, Max)"="MEAN (MIN, MAX)")))
     all_tables_2 <- rbind(all_tables_2, all_tables_next)
@@ -802,6 +859,61 @@ library(writexl)
 write_xlsx(all_tables_2, here("03_plots_and_tables", "t_test_hospital.xlsx"))
 
 all_tables_2 %>% flextable()
+```
+
+
+```{r}
+p<- vector("list", length(metric))
+
+for (i in 1:length(metric)){
+p[[i]] <- ggplot(table_list_2[[i]], aes(x=t_probability, color=condition)) +
+  geom_density(adjust = 1/6) +
+  ggtitle(metric[i])+
+  theme(legend.position = "none", plot.title = element_text(size=10)) +
+  xlab("")
+}
+
+grid.arrange(p[[1]], p[[2]], p[[3]], p[[4]], p[[5]], p[[6]],p[[7]], p[[8]],p[[9]], p[[10]], ncol=4)
+```
+
+
+```{r}
+p<- vector("list", length(metric))
+
+for (i in 1:length(metric)){
+p[[i]] <- ggplot(table_list_2[[i]], aes(x=t_probability, fill=condition)) +
+  geom_histogram(stat="bin", bins=40, position= "identity", alpha=0.7)+
+  #geom_density() +
+  xlab("")+
+  ylab("")+
+  ggtitle(metric[i])+
+  theme(legend.position = "none", plot.title = element_text(size=10)) +
+  xlab("")+
+  ylab("")+
+  ggtitle(metric[i])
+}
+
+grid.arrange(p[[1]], p[[2]], p[[3]], p[[4]], p[[5]], p[[6]],p[[7]], p[[8]],p[[9]], p[[10]], ncol=4)
+```
+
+```{r}
+list_count_pre <- list()
+list_count_post <- list()
+
+for (i in 1:length(metric)){
+  max_CDIpre <- max( table_list_2[[i]][table_list_2[[i]]$condition == "Cdif_pre" ,]$t_probability)
+  max_CDIpost <- max( table_list_2[[i]][table_list_2[[i]]$condition == "Cdif_post" ,]$t_probability)
+  
+  lower_than_CDIpre <- sum(table_list_2[[i]][ table_list_2[[i]]$condition == "donor" ,]$t_probability < max_CDIpre)
+  lower_than_CDIpost <- sum(table_list_2[[i]][ table_list_2[[i]]$condition == "donor" ,]$t_probability < max_CDIpost)
+  
+  list_count_pre <- append(list_count_pre, lower_than_CDIpre)
+  list_count_post <- append(list_count_post, lower_than_CDIpost)
+}
+
+overlap_df_2 <- data.frame(Parameter = metric, Overlaped_CDIpre = unlist(list_count_pre), Overlaped_CDIpost = unlist(list_count_post))
+
+write_xlsx(overlap_df_2, here("03_plots_and_tables", "overlap_2.xlsx"))
 ```
 
 ## Visualising the difference
