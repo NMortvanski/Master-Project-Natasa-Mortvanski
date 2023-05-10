@@ -145,15 +145,9 @@ plot_violin <- function(df, column){
       geom_violin()+
       geom_boxplot(width=0.1, color="grey", alpha=0.2) +
       geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[column]]), linetype = "dashed")+ 
-      labs(x = metric[i])+
+      xlab(if (metric[i] == "shannon_entropy"){"Shannon entropy (❋)"} else if (metric[i] =="chao1"){"Chao1 (+)"} else if (metric[i] == "menhinick"){"Menhinick (+)"} else if (metric[i] == "margalef"){"Margalef (+)"} else if (metric[i] == "fisher_alpha"){"Fisher alpha (+)"} else if (metric[i] == "simpson"){"Simpson (❋)"} else if (metric[i] == "gini_index"){"Gini index (x)"} else if (metric[i] == "strong"){"Strong dominance (x)"} else if (metric[i] == "pielou_evenness"){"Pielou evenness (x)"} else if (metric[i] == "faith_pd"){"Faith PD (+)"}) +
       ylab("")+
-      theme(legend.position="none") 
-    
-    if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
-     violin[[i]] <- violin[[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-    }
+      theme(legend.position="none", axis.title.x = element_text(size=10))
   }
   return(violin)
 }
@@ -174,6 +168,13 @@ do_wilcox_test <- function(df, column){
   tests <- do.call(what = rbind, args = test)
   
   return(tests)
+}
+```
+
+```{r}
+label_fun <- function(x){
+  if (x == "shannon_entropy"){y <- "Shannon entropy (❋)"} else if (x =="chao1"){y <- "Chao1 (+)"} else if (x == "menhinick"){y <- "Menhinick (+)"} else if (x == "margalef"){y <- "Margalef (+)"} else if (x == "fisher_alpha"){y <- "Fisher alpha (+)"} else if (x == "simpson"){y <- "Simpson (❋)"} else if (x == "gini_index"){y <- "Gini index (x)"} else if (x == "strong"){y <- "Strong dominance (x)"} else if (x == "pielou_evenness"){y <- "Pielou evenness (x)"} else if (x == "faith_pd"){y <- "Faith PD (+)"}
+  return(y)
 }
 ```
 
@@ -729,7 +730,9 @@ progression <- vector('list', length(metric))
 for (i in 1:length(metric)){
   progression[[i]] <- CDI_FMT %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color= CDI_FMT$animations_subj)) +
     geom_line()+
-    geom_point()+
+    geom_point(size=1)+
+    ylab(label_fun(metric[i]))+
+    xlab("Day since FMT")+
     facet_wrap(dplyr::vars(CDI_FMT$animations_subject), ncol=2)
 }
 
@@ -740,12 +743,44 @@ progression
 for (i in 1:length(metric)) {
   progression[[i]] <- CDI_FMT %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color =CDI_FMT$animations_subj)) +
     geom_line()+
-    geom_point() +
-    theme(legend.position="none")
-}
+    geom_point(size=1) +
+    theme_classic() +
+    theme(legend.position="none", axis.title.y=element_text(size=15), axis.title.x=element_text(size=15), title =element_text(size=10)) +
+    # ggtitle(label_fun(metric[i]))+
+    # ylab("")+
+    ylab(label_fun(metric[i]))+
+    xlab("")+
+    scale_color_manual(values=c('#a6611a','#dfc27d','#80cdc1','#018571'))
+  }
 
-grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], ncol=3)
-grid.arrange(progression[[6]], progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=3)
+grid.arrange(progression[[2]], progression[[7]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 15)))
+grid.arrange(progression[[2]], progression[[7]], progression[[9]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 12)))
+
+grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], ncol=2)
+grid.arrange(progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=2, nrow=3)
+```
+
+```{r}
+for (i in 1:length(metric)) {
+  progression[[i]] <- CDI_FMT[CDI_FMT$animations_subject == "subject_1",] %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]])) +
+    geom_line(color='#018571')+
+    geom_point(size=1, color='#018571') +
+    theme_classic() +
+    theme(legend.position="none", axis.title.y=element_text(size=12), axis.title.x=element_text(size=12)) +
+    ylab(label_fun(metric[i]))+
+    xlab("")
+    #scale_color_brewer(palette="Set3")
+    #scale_color_manual(values=c('#a6611a','#dfc27d','#80cdc1','#018571'))
+  }
+
+grid.arrange(progression[[2]], progression[[7]], ncol=1)
+grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], ncol=3)
+grid.arrange(progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=3, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 12)))
+```
+
+```{r}
+#all_tables_next <- data.frame(table1(~ t_probability | condition, data=t_test_results, overall=F, render.continuous=c("Mean (Min, Max)"="MEAN (MIN, MAX)")))
+table1(~ chao1 + margalef + menhinick + fisher_alpha + faith_pd + gini_index + strong + pielou_evenness + shannon_entropy + simpson | animations_subject, data=CDI_FMT, overall=F, render.continuous=c("Min"="MIN", "Max"="MAX", "percent. difference" = "((MAX-MIN)/MIN)*100"))
 ```
 
 ```{r}
@@ -755,8 +790,11 @@ data <- CDI_FMT[CDI_FMT$animations_subject == subjects[1],]
   
 for (i in 1:length(metric)) {
   progression[[i]] <- data %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]])) +
-    geom_line()+
-    geom_point()
+    geom_line(color='#a6611a')+
+    geom_point(size=1, color='#a6611a')+
+    ylab(label_fun(metric[i]))+
+    xlab("Day since FMT")+
+    theme_classic() 
 }
 
 grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=3)
@@ -788,7 +826,7 @@ for (i in 1:length(metric)){
     geom_violin()+
     geom_boxplot(width=0.1, color="grey", alpha=0.2) +
     geom_vline(data = mean_line, aes(xintercept = grp_mean, color = day_since_fmt), linetype = "dashed")+ 
-    labs(x = metric[i])+
+    xlab(label_fun(metric[i]))+
     ylab("") +
     facet_wrap(dplyr::vars(condition), nrow=1)+
     theme(legend.position="none") 

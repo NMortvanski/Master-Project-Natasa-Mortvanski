@@ -33,6 +33,13 @@ library(here)
 library(flextable)
 ```
 
+```{r}
+label_fun <- function(x){
+  if (x == "shannon_entropy"){y <- "Shannon entropy"} else if (x =="chao1"){y <- "Chao1"} else if (x == "menhinick"){y <- "Menhinick"} else if (x == "margalef"){y <- "Margalef"} else if (x == "fisher_alpha"){y <- "Fisher alpha"} else if (x == "simpson"){y <- "Simpson"} else if (x == "gini_index"){y <- "Gini index"} else if (x == "strong"){y <- "Strong dominance"} else if (x == "pielou_evenness"){y <- "Pielou evenness"} else if (x == "faith_pd"){y <- "Faith PD"}
+  return(y)
+}
+```
+
 ### About dataset:
 
 As a source of samples for healthy control we chose American Gut Project study. Data and metadata are available on Qiita platform:
@@ -150,7 +157,7 @@ for (i in 1:length(metric)){
     geom_violin()+
     geom_boxplot(width=0.1, color="grey", alpha=0.2) +
     geom_vline(data = mean_line, aes(xintercept = grp_mean, color = BMI_cat), linetype = "dashed")+ 
-    labs(x = metric[i])+
+    xlab(label_fun(metric[i])) +
     ylab("")+
     theme(legend.position="none") 
   

@@ -45,6 +45,13 @@ all_healthy <- read.csv(here("01_tidy_data", "AGP_healthy.csv.gz"), header = TRU
 nrow(all_healthy)
 ```
 
+```{r}
+label_fun <- function(x){
+  if (x == "shannon_entropy"){y <- "Shannon entropy"} else if (x =="chao1"){y <- "Chao1"} else if (x == "menhinick"){y <- "Menhinick"} else if (x == "margalef"){y <- "Margalef"} else if (x == "fisher_alpha"){y <- "Fisher alpha"} else if (x == "simpson"){y <- "Simpson"} else if (x == "gini_index"){y <- "Gini index"} else if (x == "strong"){y <- "Strong dominance"} else if (x == "pielou_evenness"){y <- "Pielou evenness"} else if (x == "faith_pd"){y <- "Faith PD"}
+  return(y)
+}
+```
+
 ## Distributions of diversity metrics (histograms)
 
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
@@ -63,17 +70,21 @@ colors <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_p
 Let's plot the distributions of different alpha diversity metrics in this healthy subset of data:
 
 ```{r}
-histo <- vector('list', length(metric))
+metric2 <- c("gini_index", "strong", "shannon_entropy", "simpson", "pielou_evenness", "chao1", "faith_pd", "fisher_alpha", "menhinick", "margalef") 
 
-for (i in 1:length(metric)){
-  histo[[i]] <- all_healthy %>% ggplot(aes(x = .data[[metric[i]]])) +
+histo <- vector('list', length(metric2))
+
+for (i in 1:length(metric2)){
+  histo[[i]] <- all_healthy %>% ggplot(aes(x = .data[[metric2[i]]])) +
     geom_histogram(aes(y=..density..), colour="black", fill="white", bins=30)+
     geom_density(alpha=.2, fill=colors[i]) +
-    xlab(label = metric[i]) + 
-    ylab(label = "density")
+    ylab(label = "") +
+    xlab(label_fun(metric2[i])) +
+    theme_classic()+ 
+    theme(axis.title.x = element_text(size=14))
 }
 
-grid.arrange(histo[[1]], histo[[2]],histo[[3]], histo[[4]],histo[[5]], histo[[6]],histo[[7]], histo[[8]],histo[[9]], histo[[10]], ncol=3, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in healthy dataset", gp=gpar(fontsize=10,font=2)))
+grid.arrange(histo[[1]], histo[[2]],histo[[3]], histo[[4]],histo[[5]], histo[[6]],histo[[7]], histo[[8]],histo[[9]], histo[[10]], ncol=3, left = textGrob("density", rot = 90, gp = gpar(fontsize = 14)))
 ```
 
 ### Testing for normality
@@ -135,10 +146,10 @@ First lets check correlations between alpha diversity metrics:
 ```{r}
 only_metrics <- all_healthy[,2:11]
 cor_matrix <- cor(only_metrics, method = "spearman")
+colnames(cor_matrix) <-  rep(c("Shannon entropy", "Chao1", "Menhinick", "Margalef", "Fisher alpha", "Gini index", "Strong dominance", "Simpson", "Faith PD", "Pielou evenness"))
+rownames(cor_matrix) = rep(c("Shannon entropy", "Chao1", "Menhinick", "Margalef", "Fisher alpha", "Gini index", "Strong dominance", "Simpson", "Faith PD", "Pielou evenness"))
 
-#corrplot(cor_matrix, type = "upper", order = "hclust", addrect = 3, tl.col = "black", tl.srt = 45)
-
-corrplot(cor_matrix, order = 'hclust', addrect = 3, tl.col = "black", tl.srt = 45)
+corr_plt <- corrplot(cor_matrix, order = 'hclust', addrect = 3, tl.col = "black", tl.srt = 45)
 ```
 
 ```{r}
@@ -497,7 +508,7 @@ for (j in 1:length(compare)){
       geom_violin()+
       geom_boxplot(width=0.1, color="grey", alpha=0.2) +
       geom_vline(data = mean_line, aes(xintercept = grp_mean, color = .data[[compare[j]]]), linetype = "dashed")+ 
-      labs(x = metric[i])+
+      xlab(label_fun(metric[i])) +
       ylab("")+
       #ggtitle("A Violin plot of distributions of alpha metrics in different conditions")+
       scale_y_discrete(labels = function(x) str_wrap(x, width = 7))+
