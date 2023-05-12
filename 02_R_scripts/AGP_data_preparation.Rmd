@@ -160,12 +160,6 @@ for (i in 1:length(metric)){
     xlab(label_fun(metric[i])) +
     ylab("")+
     theme(legend.position="none") 
-  
-  if(metric[i] != "shannon_entropy" & metric[i] != "strong" & metric[i] != "gini_index"  & metric[i] != "menhinick"){
-   violin[[i]] <- violin[[i]] + 
-     scale_x_continuous(trans = 'log10') +
-     xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
 }
 
 grid.arrange(violin[[1]], violin[[2]], violin[[3]], violin[[4]], violin[[5]], violin[[6]], violin[[7]], violin[[8]], violin[[9]], violin[[10]], ncol=3) 

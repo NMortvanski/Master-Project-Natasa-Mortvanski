@@ -248,7 +248,7 @@ violin_IBD <- vector('list', length(metric))
 # Use violin function
 violin_IBD <- plot_violin(healthy_disease, "condition")
 
-grid.arrange(violin_IBD[[1]], violin_IBD[[2]],violin_IBD[[3]], violin_IBD[[4]],violin_IBD[[5]], violin_IBD[[6]],violin_IBD[[7]], violin_IBD[[8]],violin_IBD[[9]], violin_IBD[[10]], ncol=4, top = textGrob("Distributions of 1) Shannon's index  2) Chao1 3) Menhinick's index \n4) Margalef's index 5) Fisher's index 6) Simpson 7) Gini index 8) Strong's index 9) Pielou's evenness \nand 10) Faith's PD in IBD datasets", gp=gpar(fontsize=10,font=2))) 
+grid.arrange(violin_IBD[[1]], violin_IBD[[2]],violin_IBD[[3]], violin_IBD[[4]],violin_IBD[[5]], violin_IBD[[6]],violin_IBD[[7]], violin_IBD[[8]],violin_IBD[[9]], violin_IBD[[10]], ncol=4) 
 ```
 
 ### Mann-Whitney-Wilcoxon Test
@@ -282,12 +282,28 @@ table2 <- tests_IBD %>%
 
 
 table1
+
+library(writexl)
+CD_table <- tests_IBD %>% 
+  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value)  %>%
+  filter(group1=="CD") %>%
+  filter(group2=="healthy") 
+write_xlsx(CD_table, here("03_plots_and_tables", "CD_AGP_table.xlsx"))
 ```
 
 There is significant difference between healthy samples and CD samples in regard to Faith PD, Gini index, Chao1, Margalef's index and Fisher alpha. No significant difference was detected for Pielou evenness, Menhinick, Strong, Shannon entropy and Simpson's index.
 
 ```{r}
 table2
+
+UC_table<- tests_IBD %>% 
+  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value)  %>%
+  filter(group1=="UC") %>%
+  filter(group2=="healthy")
+write_xlsx(UC_table, here("03_plots_and_tables", "UC_AGP_table.xlsx"))
+
 ```
 
 It seems like there is significant difference between healthy samples and UC samples in all alpha metrics except from Shannon entropy, Strong's evennes, Simpsons index and Pielou evenness (almost all of the "evenness" metrics except from Gini). "Richness" indices are all signifficantly different.
@@ -481,6 +497,12 @@ Results of the Mann-Whitney-Wilcoxon test for diversity distributions of healthy
 
 ```{r}
 table_CD_1
+
+long_CD_table <- test_CD %>% 
+  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value)  %>%
+  filter(group1 == "crohns")
+write_xlsx(long_CD_table, here("03_plots_and_tables", "long_CD_table.xlsx"))
 ```
 
 This table shows that, in first study, half of the indices don't show significant difference between healthy and CD samples (Pielou, Menhinick, Strong, Shannon and Simpson).
@@ -489,12 +511,24 @@ Results of the Mann-Whitney-Wilcoxon test for diversity distributions of healthy
 
 ```{r}
 table_CD_2
+
+long_CD_table <- test_CD %>% 
+  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value)  %>%
+  filter(group1 == "crohns")
+write_xlsx(long_CD_table, here("03_plots_and_tables", "long_CD_table.xlsx"))
 ```
 
 Helathy and CD samples without surgery are different in all except three alpha diversity indices: Margalef, Menhinick and Fisher alpha.
 
 ```{r}
 table_CD_3
+
+long_CD_surg_table <- test_CD %>% 
+  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  arrange(p.value)  %>%
+  filter(group1 != "crohns" & group2 == "control")
+write_xlsx(long_CD_surg_table, here("03_plots_and_tables", "long_CD_surg_table.xlsx"))
 ```
 
 All metrics show significant difference between healthy and Crohn's samples that undergone some type of surgical procedure.
@@ -509,13 +543,15 @@ test_CD_3 <- do_wilcox_test(CD_check_w, "condition")
 table_CD_3 <- test_CD_3 %>% 
   add_column(p.adjusted = round(p.adjust(test_CD_3$p.value, "fdr"), digits=5), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
-  filter(group1 != "CD_surgery")  %>%
+  filter(group1 != "CD_surgery") 
+
+table_CD_3%>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for distributions of different groups of Crhohn's disease patients")
 
-table_CD_3
+write_xlsx(table_CD_3, here("03_plots_and_tables", "long_CD_vs_CD1_table.xlsx"))
 ```
 
 ```{r}
@@ -523,14 +559,19 @@ test_CD_check <- list()
 
 test_CD_check <- do_wilcox_test(CD_check, "condition")
 
-test_CD_check %>% 
+AGP_control_long_table <- test_CD_check %>% 
   add_column(p.adjusted = round(p.adjust(test_CD_check$p.value, "fdr"), digits=5), .after='p.value') %>%
   filter(group1 == "control(AGP)" & group2 == "control_2") %>%
-  arrange(p.value, parameter)  %>%
+  arrange(p.value, parameter)  
+
+AGP_control_long_table%>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "AGP vs controls in CD_2 dataset")
+
+write_xlsx(AGP_control_long_table, here("03_plots_and_tables", "AGP_control_long_table.xlsx"))
+
 ```
 
 This table confirms that CD samples (without surgery) from two studies significantly differ in all except from Simpson, Fisher and Shannon index. Also healthy controls from longitudinal study are significantly different from AGP healthy population in all metrics except Pielou, Simpson and Shannon index. This tells us that we probably shouldn't mix these datasets since they show different trends. The reason is probably the heterogeneity of IBD conditions and severity level which is not properly annotated.
@@ -699,13 +740,15 @@ test_CDI_healthy <- do_wilcox_test(CDI_check, "condition")
 
 test_CDI_healthy <- test_CDI_healthy %>% 
   add_column(p.adjusted = round(p.adjust(test_CDI_healthy$p.value, "fdr"), digits=5), .after='p.value') %>%
-  arrange(p.value, parameter)  %>%
+  arrange(p.value, parameter)  
+
+test_CDI_healthy %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for distributions of different groups of Crhohn's disease patients")
 
-test_CDI_healthy
+write_xlsx(test_CDI_healthy, here("03_plots_and_tables", "CDI_AGP.xlsx"))
 ```
 
 Means of all alpha diversity indices of CDI samples are significantly different from means of the healthy control population. Based on violin plots, both richness and evenness indices show lower values in CDI samples.
@@ -740,12 +783,21 @@ progression
 ```
 
 ```{r}
+CDI_FMT_a <- CDI_FMT
+
+for(i in 1:nrow(CDI_FMT_a)) {
+  if(CDI_FMT_a$day_since_fmt[i] < 1 ){
+      CDI_FMT_a$day_since_fmt[i] <- -1
+  }
+}
+  
 for (i in 1:length(metric)) {
-  progression[[i]] <- CDI_FMT %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color =CDI_FMT$animations_subj)) +
+  progression[[i]] <- CDI_FMT_a %>% ggplot(aes(x=day_since_fmt, y= .data[[metric[i]]], color =CDI_FMT$animations_subj)) +
     geom_line()+
     geom_point(size=1) +
+    geom_vline(xintercept = 0, linetype = "dashed")+ 
     theme_classic() +
-    theme(legend.position="none", axis.title.y=element_text(size=15), axis.title.x=element_text(size=15), title =element_text(size=10)) +
+    theme(legend.position="none", axis.title.y=element_text(size=10), axis.title.x=element_text(size=15), title =element_text(size=10)) +
     # ggtitle(label_fun(metric[i]))+
     # ylab("")+
     ylab(label_fun(metric[i]))+
@@ -756,8 +808,8 @@ for (i in 1:length(metric)) {
 grid.arrange(progression[[2]], progression[[7]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 15)))
 grid.arrange(progression[[2]], progression[[7]], progression[[9]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 12)))
 
-grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], ncol=2)
-grid.arrange(progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=2, nrow=3)
+# grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], ncol=2)
+# grid.arrange(progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=2, nrow=3)
 ```
 
 ```{r}
@@ -831,11 +883,6 @@ for (i in 1:length(metric)){
     facet_wrap(dplyr::vars(condition), nrow=1)+
     theme(legend.position="none") 
   
-  if(metric[i] != "shannon_entropy" & metric[i] !="strong" & metric[i] != "gini_index"  &  metric[i] != "menhinick"){
-     violin_trans_2 [[i]] <- violin_trans_2 [[i]] + 
-       scale_x_continuous(trans = 'log10') +
-       xlab(paste(metric[i], "(log10)", sep = " ")) 
-  }
 }
 
 #plots for Shannon entropy

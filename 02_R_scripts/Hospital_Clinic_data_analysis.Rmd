@@ -192,13 +192,16 @@ test_CDI_hospital <- do_wilcox_test(hospital_CDI, "condition")
 
 test_CDI_hospital_1 <- test_CDI_hospital %>% 
   add_column(p.adjusted = round(p.adjust(test_CDI_hospital$p.value, "fdr"), digits=5), .after='p.value') %>%
-  arrange(p.value, parameter)  %>%
+  arrange(p.value, parameter)  
+
+test_CDI_hospital_1%>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
   add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for distributions of Hospital Clínic's CDI samples vs healthy control")
 
-test_CDI_hospital_1
+write_xlsx(test_CDI_hospital_1, here("03_plots_and_tables", "CDI_hospital.xlsx"))
+
 ```
 
 

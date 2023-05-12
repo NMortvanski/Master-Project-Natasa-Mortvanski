@@ -206,6 +206,9 @@ results_accuracy_all <- results_accuracy_all[order(-results_accuracy_all$accurac
 results_accuracy_all[1:10,] %>% 
   flextable() %>% 
   add_header_lines(values = "Accuracy of random forest classifier trained on all datasets in differnet models")
+
+write_xlsx(results_accuracy_all, here("03_plots_and_tables", "accuracy_all.xlsx"))
+
 ```
 
 This table shows accuracy of random forest classifier trained on data set consisting of healthy and both IBD and CDI samples, using different models. We can see that the highest accuracy is obtained if all alpha metrics are used together. However, the decrease of accuracy is not substantial when we choose only two metrics (one representing richness metric and the other evenness metric). These are top ten models with highest accuracy. We can also see that classifier is slightly better at discriminating between healthy and unhealthy samples than at predicting specific condition category.
@@ -280,6 +283,8 @@ results_accuracy_IBD <- results_accuracy_IBD[order(-results_accuracy_IBD$accurac
 results_accuracy_IBD[1:10,] %>% 
   flextable() %>% 
   add_header_lines(values = "Accuracy of random forest classifier trained on IBD and healthy datasets in differnet models")
+
+write_xlsx(results_accuracy_IBD, here("03_plots_and_tables", "accuracy_IBD.xlsx"))
 ```
 
 This table shows similar results as the previous one. In this data set consisting of only healthy and IBD samples accuracies of all models are slightly lower than in previous case where we had combined all datasets. Again the accuracy of predicting healthy and unhealthy samples is a bit better than when predicting specific condition category.
@@ -338,6 +343,9 @@ results_accuracy_CDI <- results_accuracy_CDI[order(-results_accuracy_CDI$accurac
 results_accuracy_CDI[1:10,] %>% 
   flextable() %>% 
   add_header_lines(values = "Accuracy of random forest classifier trained on CDI and healthy datasets in differnet models")
+
+write_xlsx(results_accuracy_CDI, here("03_plots_and_tables", "accuracy_CDI.xlsx"))
+
 ```
 
 This table shows the accuracy of random forest classifier trained on healthy and CDI datasets, using different model. What we can see is that this classifier seems to be able to determine the differences between healthy and CDI samples with almost 100% accuracy in various models. This is due to difference between healthy and CDI samples.
@@ -387,7 +395,7 @@ table(test$condition)
 ```
 
 ```{r}
-results_accuracy_CDI <- data.frame(model = character(0), accuracy = numeric(0))
+results_accuracy_CDI_hospital <- data.frame(model = character(0), accuracy = numeric(0))
 
 model_all_hospital <- randomForest(condition ~ shannon_entropy + chao1 + menhinick + margalef + fisher_alpha + simpson + gini_index + strong + pielou_evenness + faith_pd, data = train, importance=TRUE)
 
@@ -406,22 +414,25 @@ for (a in richness){
     accuracy <- confusion_matrix$overall["Accuracy"]
     
     new_row <- c(model = sprintf("%s + %s", a, b), accuracy = accuracy)
-    results_accuracy_CDI <- rbind(results_accuracy_CDI, new_row)
+    results_accuracy_CDI_hospital <- rbind(results_accuracy_CDI_hospital, new_row)
   }
 }
 
-names(results_accuracy_CDI)[1] <- 'model'
-names(results_accuracy_CDI)[2] <- 'accuracy'
+names(results_accuracy_CDI_hospital)[1] <- 'model'
+names(results_accuracy_CDI_hospital)[2] <- 'accuracy'
 
-results_accuracy_CDI[nrow(results_accuracy_CDI)+1,] <- c("all alpha metrics", accuracy_CDI_all)
+results_accuracy_CDI_hospital[nrow(results_accuracy_CDI_hospital)+1,] <- c("all alpha metrics", accuracy_CDI_all)
 
-results_accuracy_CDI$accuracy <- as.numeric(results_accuracy_CDI$accuracy)
+results_accuracy_CDI_hospital$accuracy <- as.numeric(results_accuracy_CDI_hospital$accuracy)
 
-results_accuracy_CDI <- results_accuracy_CDI[order(-results_accuracy_CDI$accuracy),]
+results_accuracy_CDI <- results_accuracy_CDI[order(-results_accuracy_CDI_hospital$accuracy),]
 
-results_accuracy_CDI[1:10,] %>% 
+results_accuracy_CDI_hospital[1:10,] %>% 
   flextable() %>% 
   add_header_lines(values = "Accuracy of random forest classifier trained on CDI and healthy datasets in differnet models")
+
+write_xlsx(results_accuracy_CDI_hospital, here("03_plots_and_tables", "accuracy_CDI_hospital.xlsx"))
+
 ```
 
 
