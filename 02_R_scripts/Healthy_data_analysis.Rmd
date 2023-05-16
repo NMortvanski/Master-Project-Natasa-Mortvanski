@@ -104,7 +104,7 @@ stat_sp <- lapply(stat_sp, unname) %>% unlist(stat_sp)
 pval_sp <- unlist(pval_sp)
 
 table_saphiro <- data.frame(metric=metric, statistic=stat_sp, p.value=pval_sp) 
-table_saphiro$p.value <- round(table_saphiro$p.value, digits = 4)
+#table_saphiro$p.value <- round(table_saphiro$p.value, digits = 16)
 
 skewness_list <- list()
 kurtosis_list <- list()

@@ -96,6 +96,7 @@ IBD <- all_IBD_alpha %>% left_join(IBD_meta, by=c('sample_id' = 'sample_id'))
 IBD <- IBD[complete.cases(IBD),]
 
 nrow(IBD)
+table(IBD$condition)
 ```
 
 After filtering we are left with `r nrow(IBD)` samples for which we have calculated all chosen alpha metrics.
@@ -217,7 +218,7 @@ table(CD_2$description, CD_2$condition)
 nrow(CD_2)
 ```
 
-After filtering we are left with `r nrow(all_CD_2)` samples for which we have calculated all chosen alpha metrics.
+After filtering we are left with `r nrow(CD_2)` samples for which we have calculated all chosen alpha metrics.
 
 Export data frame into .tsv.gz file:
 
@@ -292,7 +293,7 @@ ncbi_CDI$condition <- "CDI"
 
 nrow(ncbi_CDI)
 ```
-We have `r nrow(all_ncbi_CDI)` samples for which we have calculated all chosen alpha metrics.
+We have `r nrow(ncbi_CDI)` samples for which we have calculated all chosen alpha metrics.
 
 Export data frame into .tsv.gz file:
 

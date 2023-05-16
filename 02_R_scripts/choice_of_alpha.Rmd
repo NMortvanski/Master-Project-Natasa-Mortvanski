@@ -451,7 +451,7 @@ for (i in 1:length(metric)){
   # Wilcoxon test
   test[[i]] <- pairwise.wilcox.test(healthy_disease[[metric[i]]], healthy_disease$healthy_or_not, p.adjust.method="none") %>% 
   broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-  test[[i]]$p.value <- round(test[[i]]$p.value, digits = 5)
+  # test[[i]]$p.value <- round(test[[i]]$p.value, digits = 16)
   
   # Effect size
   tibble_a <- healthy_disease %>% wilcox_effsize(
@@ -475,7 +475,8 @@ eff_size <- tibble[, !names(tibble) %in% c("group1", "group2")]
 tests_1 <- inner_join(tests_1, eff_size , by= "parameter")
 
 test_1_show <- tests_1 %>% 
-  add_column(p.adjusted = round(p.adjust(tests_1$p.value, "fdr"), 5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_1$p.value, "fdr"), 16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_1$p.value, "fdr"), .after='p.value') %>%
   arrange(-effsize)  
 
 test_1_show %>%

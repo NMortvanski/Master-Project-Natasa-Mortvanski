@@ -162,7 +162,7 @@ do_wilcox_test <- function(df, column){
   for (i in 1:length(metric)){
     test[[i]] <- pairwise.wilcox.test(df[[metric[i]]], df[[column]], p.adjust.method="none") %>% 
     broom::tidy() %>% add_column(parameter = metric[i], .before='group1')
-    test[[i]]$p.value <- round(test[[i]]$p.value, digits = 5)
+    #test[[i]]$p.value <- round(test[[i]]$p.value, digits = 16)
   }
   
   tests <- do.call(what = rbind, args = test)
@@ -217,7 +217,8 @@ tests_IBD_check <- list()
 tests_IBD_check <- do_wilcox_test(IBD_check, "condition")
 
 table <- tests_IBD_check %>% 
-  add_column(p.adjusted = round(p.adjust(tests_IBD_check$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_IBD_check$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD_check$p.value, "fdr"), .after='p.value') %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
   bold(~ p.adjusted < 0.05, 5) %>%
@@ -261,7 +262,8 @@ tests_IBD <- list()
 tests_IBD <- do_wilcox_test(healthy_disease, "condition")
 
 table1 <- tests_IBD %>% 
-  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1=="CD") %>%
   filter(group2=="healthy") %>%
@@ -271,7 +273,8 @@ table1 <- tests_IBD %>%
   add_header_lines(values = "Results of the Mann-Whitney-Wilcoxon test for distributions of different conditions")
 
 table2 <- tests_IBD %>% 
-  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1=="UC") %>%
   filter(group2=="healthy") %>%
@@ -285,7 +288,8 @@ table1
 
 library(writexl)
 CD_table <- tests_IBD %>% 
-  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=16), .after='p.value') %>%ç
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1=="CD") %>%
   filter(group2=="healthy") 
@@ -298,7 +302,8 @@ There is significant difference between healthy samples and CD samples in regard
 table2
 
 UC_table<- tests_IBD %>% 
-  add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(tests_IBD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(tests_IBD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1=="UC") %>%
   filter(group2=="healthy")
@@ -467,7 +472,8 @@ test_CD_1 <- do_wilcox_test(CD_1, "condition")
 test_CD <- do_wilcox_test(CD, "surgery_and_ibd")
 
 table_CD_1 <- test_CD_1 %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD_1$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD_1$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD_1$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
@@ -475,7 +481,8 @@ table_CD_1 <- test_CD_1 %>%
   add_header_lines(values = "Crohns vs controls in CD_1 dataset")
 
 table_CD_2 <- test_CD %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1 == "crohns")  %>%
   flextable() %>% 
@@ -484,7 +491,8 @@ table_CD_2 <- test_CD %>%
   add_header_lines(values = "Crohns vs controls in CD dataset")
 
 table_CD_3 <- test_CD %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1 != "crohns" & group2 == "control")  %>%
   flextable() %>% 
@@ -499,7 +507,8 @@ Results of the Mann-Whitney-Wilcoxon test for diversity distributions of healthy
 table_CD_1
 
 long_CD_table <- test_CD %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD$p.value, "fdr"),  .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1 == "crohns")
 write_xlsx(long_CD_table, here("03_plots_and_tables", "long_CD_table.xlsx"))
@@ -513,7 +522,8 @@ Results of the Mann-Whitney-Wilcoxon test for diversity distributions of healthy
 table_CD_2
 
 long_CD_table <- test_CD %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1 == "crohns")
 write_xlsx(long_CD_table, here("03_plots_and_tables", "long_CD_table.xlsx"))
@@ -525,7 +535,8 @@ Helathy and CD samples without surgery are different in all except three alpha d
 table_CD_3
 
 long_CD_surg_table <- test_CD %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD$p.value, "fdr"),  .after='p.value') %>%
   arrange(p.value)  %>%
   filter(group1 != "crohns" & group2 == "control")
 write_xlsx(long_CD_surg_table, here("03_plots_and_tables", "long_CD_surg_table.xlsx"))
@@ -541,7 +552,8 @@ test_CD_3 <- list()
 test_CD_3 <- do_wilcox_test(CD_check_w, "condition")
 
 table_CD_3 <- test_CD_3 %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD_3$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD_3$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD_3$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   filter(group1 != "CD_surgery") 
 
@@ -560,7 +572,8 @@ test_CD_check <- list()
 test_CD_check <- do_wilcox_test(CD_check, "condition")
 
 AGP_control_long_table <- test_CD_check %>% 
-  add_column(p.adjusted = round(p.adjust(test_CD_check$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CD_check$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CD_check$p.value, "fdr"),  .after='p.value') %>%
   filter(group1 == "control(AGP)" & group2 == "control_2") %>%
   arrange(p.value, parameter)  
 
@@ -609,10 +622,11 @@ wilcox_p_value <- healthy_disease_2 %>%
 wilcox_p_value <- t(wilcox_p_value)
 colnames(wilcox_p_value) <- c("p.value")
 wilcox_p_value <- data.frame(Alpha_Metric = row.names(wilcox_p_value), wilcox_p_value)
-wilcox_p_value$p.value <- round(wilcox_p_value$p.value, digits = 5)
+# wilcox_p_value$p.value <- round(wilcox_p_value$p.value, digits = 16)
 
 wilcox_p_value %>%
-  add_column(p.adjusted = round(p.adjust(wilcox_p_value$p.value, "fdr"), digits=5), .after='p.value') %>%
+  #add_column(p.adjusted = round(p.adjust(wilcox_p_value$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(wilcox_p_value$p.value, "fdr"), .after='p.value') %>%
   flextable() %>%
   bold(~ p.value < 0.05, 2) %>%
   bold(~ p.adjusted < 0.05, 3) %>%
@@ -637,10 +651,10 @@ kruskal_results <- healthy_disease_2 %>%
 kruskal_results <- as.data.frame(t(kruskal_results))
 colnames(kruskal_results) <- c("p.value")
 kruskal_results <- data.frame(Alpha_Metric = row.names(kruskal_results), kruskal_results)
-kruskal_results$p.value <- round(kruskal_results$p.value, digits = 5)
+#kruskal_results$p.value <- round(kruskal_results$p.value, digits = 16)
 
 kruskal_results %>% 
-  add_column(p.adjusted = round(p.adjust(kruskal_results$p.value, "fdr"), digits=5), .after='p.value') %>%
+  add_column(p.adjusted = round(p.adjust(kruskal_results$p.value, "fdr"), digits=16), .after='p.value') %>%
   flextable() %>%
   bold(~ p.value < 0.05, 2) %>%
    bold(~ p.adjusted < 0.05, 3) %>%
@@ -707,7 +721,8 @@ test_CDI_BMI <- list()
 test_CDI_BMI <- do_wilcox_test(CDI, "BMI_cat")
 
 test_CDI_BMI <- test_CDI_BMI %>% 
-  add_column(p.adjusted = round(p.adjust(test_CDI_BMI$p.value, "fdr"), digits=5), .after='p.value') %>%
+  #add_column(p.adjusted = round(p.adjust(test_CDI_BMI$p.value, "fdr"), digits=5), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CDI_BMI$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  %>%
   flextable() %>% 
   bold(~ p.value < 0.05, 4) %>%
@@ -739,7 +754,8 @@ test_CDI_healthy <- list()
 test_CDI_healthy <- do_wilcox_test(CDI_check, "condition")
 
 test_CDI_healthy <- test_CDI_healthy %>% 
-  add_column(p.adjusted = round(p.adjust(test_CDI_healthy$p.value, "fdr"), digits=5), .after='p.value') %>%
+  # add_column(p.adjusted = round(p.adjust(test_CDI_healthy$p.value, "fdr"), digits=16), .after='p.value') %>%
+  add_column(p.adjusted = p.adjust(test_CDI_healthy$p.value, "fdr"), .after='p.value') %>%
   arrange(p.value, parameter)  
 
 test_CDI_healthy %>%
@@ -903,7 +919,8 @@ for (i in 1:length(cond)){
   test_CDI_trans <- do_wilcox_test(FMT_IBD_CDI_1, "day_since_fmt")
 
   table <- test_CDI_trans %>%
-    add_column(p.adjusted = round(p.adjust(test_CDI_trans$p.value, "fdr"), digits=5), .after='p.value') %>%
+    # add_column(p.adjusted = round(p.adjust(test_CDI_trans$p.value, "fdr"), digits=5), .after='p.value') %>%
+    add_column(p.adjusted = p.adjust(test_CDI_trans$p.value, "fdr"), .after='p.value') %>%
     flextable() %>%
     bold(~ p.value < 0.05, 4) %>%
     bold(~ p.adjusted < 0.05, 5) %>%

@@ -12,12 +12,14 @@ This is a repository containing the R project with the following directories:
   Following studies were used as source of samples of different pathological conditions that affect 
   alpha diversity:
 
-    1. Multi-omics of the gut microbial ecosystem in inflammatory bowel diseases -> 177 samples, [dataset link](https://qiita.ucsd.edu/study/description/11484)
-    2. Metaomics Reveals Microbiome Based Proteolysis as a Driver of Ulcerative Colitis Severity -> 96 samples, [dataset link](https://qiita.ucsd.edu/study/description/11549)
-    3. Guiding longitudinal sampling in inflammatory bowel diseases cohorts -> ...samples , [dataset link](https://qiita.ucsd.edu/study/description/2538#)
-    4. Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/10057)
+    1. Subset of the American Gut Project dataset -> [dataset link](https://qiita.ucsd.edu/study/description/10317)
+    2. Multi-omics of the gut microbial ecosystem in inflammatory bowel diseases -> 177 samples, [dataset link](https://qiita.ucsd.edu/study/description/11484)
+    3. Metaomics Reveals Microbiome Based Proteolysis as a Driver of Ulcerative Colitis Severity -> 96 samples, [dataset link](https://qiita.ucsd.edu/study/description/11549)
+    4. Guiding longitudinal sampling in inflammatory bowel diseases cohorts -> ...samples , [dataset link](https://qiita.ucsd.edu/study/description/2538#)
+    4. Gut microbiome predictors of treatment response and recurrence in primary Clostridium difficile infection -> BioProject study accession: PRJNA342347
     5. Dynamic changes in short- and long-term bacterial composition following fecal microbiota transplantation for recurrent Clostridium difficile infection -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/1924)
-    6. Hospital Clinic's CDI data (only calculated alpha diversity metrics)
+    6. Changes in Microbial Ecology after Fecal Microbiota Transplantation for recurrent C. difficile Infection Affected by Underlying Inflammatory Bowel Disease -> 95 samples, [dataset link](https://qiita.ucsd.edu/study/description/10057)
+    7. Hospital Clinic's CDI and donor data (only alpha diversity metrics files and metadata)
 
   For all of the studies above, following alpha metrics wese computed:
   
@@ -41,9 +43,9 @@ This is a repository containing the R project with the following directories:
 
   Contains all Rmd files for the analysis. 
 
-* 03_plots: 
+* 03_plots_and_tables: 
 
-  *WILL* contain plots generated in the analysis.
+  Contains plots and tables generated in the analysis.
   
 * 04_reports: 
 
@@ -62,3 +64,5 @@ This is a repository containing the R project with the following directories:
 * run_all.r:
 
   Script that utilize the make_reports.R function and creates HTML reports for all Rmd files in the project.
+  
+* Supplementary material
