@@ -121,8 +121,11 @@ Lets filter out samples that are truly healthy:
 AGP_healthy_subset <- AGP %>%
   filter(age_cat== "20s" | 
          age_cat== "30s" | 
-         age_cat== "40s" | 
-         age_cat== "50s" | 
+         age_cat== "40s" 
+  #)
+         
+         |
+         age_cat== "50s" |
          age_cat== "60s")
 
 # Filter out stool and feces samples
@@ -130,6 +133,7 @@ AGP_healthy_subset <- AGP_healthy_subset %>%
   filter(sample_type=="feces" | 
          sample_type=="Stool")
 
+nrow(AGP_healthy_subset)
 ```
 
 Check whether BMI category affects alpha diversity:

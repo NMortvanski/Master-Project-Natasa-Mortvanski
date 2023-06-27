@@ -215,6 +215,7 @@ CD_2 <- CD_2[complete.cases(CD_2),]
 
 table(CD_2$description, CD_2$condition)
 
+table(CD_2$condition)
 nrow(CD_2)
 ```
 
@@ -432,6 +433,7 @@ FMT_IBD_CDI <- FMT_IBD_CDI[complete.cases(FMT_IBD_CDI),]
 
 
 nrow(FMT_IBD_CDI)
+table(FMT_IBD_CDI$condition)
 ```
 
 After filtering we are left with `r nrow(FMT_IBD_CDI)` samples for which we have calculated all chosen alpha metrics.

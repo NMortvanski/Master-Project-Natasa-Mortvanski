@@ -230,6 +230,7 @@ under <- ovun.sample(healthy_or_not~., data=train, method = "under", p=0.5)
 train <- under$data
 table(train$healthy_or_not)
 table(train$condition)
+table(test$condition)
 ```
 
 ```{r}

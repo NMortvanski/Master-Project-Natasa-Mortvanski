@@ -58,8 +58,8 @@ This is a repository containing the R project with the following directories:
 
 * 06_shiny_app: 
 
-  Contains R script for running Shiny app that creates density and box plots of alpha diversity distributions 
-  in healthy dataset stratified by different columns of metadata.
+  Contains R script (app.R) for running Shiny app that compares new sample with healthy donor population from Hospital
+  Clínic, stores the results and provides reviews of patients alpha diversity progress trough time.
 
 * run_all.r:
 

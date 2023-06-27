@@ -20,6 +20,8 @@ ui <- fluidPage(titlePanel("Dynamic Variable Selection"),
 
                 sidebarLayout(sidebarPanel(
 
+                  #fileInput("upload", "Upload your FASTQ file"),
+
                   selectInput(
                     inputId = "y1",
                     label = "Select alpha metric",
@@ -118,7 +120,7 @@ server <- function(session, input, output) {
       geom_violin()+
       geom_boxplot(width=0.1, color="grey", alpha=0.2) +
       scale_x_continuous(trans = 'log10') +
-      labs(x = metric[i], y="") +
+      labs(x = input$y1, y="") +
       theme(legend.position="none")
 
     if(input$check_sec_var==FALSE){

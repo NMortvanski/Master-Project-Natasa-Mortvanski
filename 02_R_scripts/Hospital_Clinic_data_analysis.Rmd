@@ -64,6 +64,10 @@ hospital_CDI$condition[hospital_CDI$condition=="healthy_donors"] <- "donor"
 
 ```
 
+Export table:
+```{r}
+write.csv(hospital_CDI, gzfile(here("01_tidy_data", "hosp_donor_and_CDI.csv.gz")), row.names=FALSE)
+```
 
 Let's define vector of names of the alpha diversity metrics that are going to be analysed:
 
