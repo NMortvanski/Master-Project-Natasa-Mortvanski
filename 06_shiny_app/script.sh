@@ -46,46 +46,6 @@ if test -d $given_file  ; then
 	  --p-metric faith_pd \
 	  --o-alpha-diversity faith_pd_vector.qza
 	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric chao1 \
-	  --o-alpha-diversity chao1_vector.qza
-
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric fisher_alpha \
-	  --o-alpha-diversity fisher_alpha_vector.qza
-	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric margalef \
-	  --o-alpha-diversity margalef_vector.qza
-	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric menhinick \
-	  --o-alpha-diversity menhinick_vector.qza
-	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric simpson \
-	  --o-alpha-diversity simpson_vector.qza
-	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric strong \
-	  --o-alpha-diversity strong_vector.qza
-	
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric pielou_e \
-	  --o-alpha-diversity pielou_vector.qza
-	  
-     qiime diversity alpha \
-	  --i-table table-dada2.qza \
-	  --p-metric shannon \
-	  --o-alpha-diversity shannon_vector.qza
-
 	  
      qiime tools export \
 	  --input-path gini_index_vector.qza \
@@ -99,54 +59,6 @@ if test -d $given_file  ; then
 
      mv alpha-diversity.tsv faith.tsv
 
-	  
-     qiime tools export \
-	  --input-path chao1_vector.qza \
-	  --output-path .
-
-     mv alpha-diversity.tsv chao1.tsv
-     
-     qiime tools export \
-	  --input-path fisher_alpha_vector.qza \
-	  --output-path .
-	  
-     mv alpha-diversity.tsv fisher_alpha.tsv
-	  
-     qiime tools export \
-	  --input-path margalef_vector.qza \
-	  --output-path .
-
-     mv alpha-diversity.tsv margalef.tsv
-
-     qiime tools export \
-	  --input-path menhinick_vector.qza \
-	  --output-path .
-	  
-     mv alpha-diversity.tsv menhinick.tsv
-	  
-     qiime tools export \
-	  --input-path simpson_vector.qza \
-	  --output-path .
-
-     mv alpha-diversity.tsv simpson.tsv
-
-     qiime tools export \
-	  --input-path strong_vector.qza \
-	  --output-path .
-	  
-     mv alpha-diversity.tsv strong.tsv
-	  
-     qiime tools export \
-	  --input-path pielou_vector.qza \
-	  --output-path .
-
-     mv alpha-diversity.tsv pielou.tsv
-     
-     qiime tools export \
-	  --input-path shannon_vector.qza \
-	  --output-path .
-
-     mv alpha-diversity.tsv shannon.tsv
      
 
 else

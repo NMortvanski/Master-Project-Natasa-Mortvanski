@@ -1,2 +1,5 @@
-Sample_ID,Age,Height,Weight,BMI,Sex,Cdiff,Antibiotics,Gini,Faith_PD
-CD005_M90,66,150,115,51.1,male,yes,yes,0.733814422049226,5.50402512679491
+Sample_ID,Name,Date_of_sampling,Age,Height,Weight,BMI,Sex,Cdiff,Antibiotics,FMT,FMT_date,Gini,Faith_PD
+CD003_M90,Patient A,2023-06-06,49,182,72,21.7,female,yes,Vancomycin,yes,2023-05-26,0.594702813743959,6.81957892569532
+CD005_M_1,Patient B,2023-06-13,33,184,90,26.6,male,yes,no,yes,2023-06-01,0.409442060085837,1.43208417679994
+CD014_M7,Patient B,2023-05-16,60,140,84,42.9,female,yes,no,no,None,0.635828035957851,5.06707872786958
+CD025_M_1,Patient A,2023-05-03,49,182,72,21.7,female,yes,Vancomycin,yes,2023-05-26,0.610623332524861,3.58777285492215
