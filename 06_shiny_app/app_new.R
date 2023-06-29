@@ -444,7 +444,7 @@ server <- function(input, output, session) {
 
     # T-test for Gini index
     tval_gini <- (gini$gini_index - mean(hospital_donor$gini_index)) / (sd(hospital_donor$gini_index)*sqrt((length(hospital_donor$gini_index)+1) / length(hospital_donor$gini_index)))
-    pval_gini <- pt(tval_gini, df=degfree)
+    pval_gini <- pt(tval_gini, df=degfree, lower.tail=FALSE)
 
     # T-test for Faith PD
     tval_faith <- (faith$faith_pd - mean(hospital_donor$faith_pd)) / (sd(hospital_donor$faith_pd)*sqrt((length(hospital_donor$faith_pd)+1) / length(hospital_donor$faith_pd)))
@@ -454,22 +454,22 @@ server <- function(input, output, session) {
     # CREATE PLOTS
 
     plotInput1 <- reactive({
-      hospital_donor %>% ggplot(aes(x = gini_index, y = 1)) +
-        geom_violin(alpha=0.5, linewidth=1, color = "#1B9E77", fill="#8ae3c9")+
-        geom_boxplot(width=0.1, color="#1B9E77", alpha=0.2, linewidth=1) +
-        geom_vline(aes(xintercept = gini$gini_index), color = "#D95F02", linetype = "dashed", linewidth=1)+
-        xlab("Gini index") +
+      hospital_donor %>% ggplot(aes(x = faith_pd, y = 1)) +
+        geom_violin( alpha=0.5, color = "#4E84C4", fill="#9bc3f2", linewidth=1)+
+        geom_boxplot(width=0.1, color="#4E84C4", alpha=0.2, linewidth=1) +
+        geom_vline(aes(xintercept = faith$faith_pd), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        xlab("Faith Phylogenetic Distance") +
         ylab("")+
         theme_classic() +
         theme(legend.position="none", axis.text.y=element_blank(), axis.ticks.y=element_blank())
     })
 
     plotInput2 <- reactive({
-      hospital_donor %>% ggplot(aes(x = faith_pd, y = 1)) +
-        geom_violin( alpha=0.5, color = "#4E84C4", fill="#9bc3f2", linewidth=1)+
-        geom_boxplot(width=0.1, color="#4E84C4", alpha=0.2, linewidth=1) +
-        geom_vline(aes(xintercept = faith$faith_pd), color = "#D95F02", linetype = "dashed", linewidth=1)+
-        xlab("Faith Phylogenetic Distance") +
+      hospital_donor %>% ggplot(aes(x = gini_index, y = 1)) +
+        geom_violin(alpha=0.5, linewidth=1, color = "#1B9E77", fill="#8ae3c9")+
+        geom_boxplot(width=0.1, color="#1B9E77", alpha=0.2, linewidth=1) +
+        geom_vline(aes(xintercept = gini$gini_index), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        xlab("Gini index") +
         ylab("")+
         theme_classic() +
         theme(legend.position="none", axis.text.y=element_blank(), axis.ticks.y=element_blank())
