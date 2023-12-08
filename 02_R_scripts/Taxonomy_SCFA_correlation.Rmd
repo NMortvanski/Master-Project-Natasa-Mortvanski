@@ -1,0 +1,176 @@
+---
+title: "Taxonomy_correlation"
+author: "Natasa Mortvanski"
+date: "2023-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(here)
+library(phyloseq)
+library(qiime2R)
+library(microbiome)
+library(microbiomeutilities)
+library(tidyr)
+library(data.table)
+library(corrplot)
+library(flextable)
+
+# Creating phyloseq object
+
+physeq <- qza_to_phyloseq(
+  features= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/table-dada2.qza",
+  tree= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/rooted-tree.qza",
+  taxonomy= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/taxonomy.qza",
+  metadata = "~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/SCFA_alpha_donors.tsv"
+  )
+
+physeq@tax_table
+```
+
+## Taxonomic level: Family
+
+### Creating a table of abundances on Family level:
+
+```{r}
+# tax_glom function merges species that have the same taxonomy at a certain 
+# taxonomic rank - in this case family level
+glom <- tax_glom(physeq, taxrank=rank_names(physeq)[5])
+
+# psmelt function melts phyloseq data object into large data.frame 
+smelted_data <- psmelt(glom) 
+
+abundances_fam <- smelted_data %>% select(-c(Kingdom, Phylum, Class, Order)) %>%
+        spread(Family, Abundance) %>%
+  group_by(Sample) %>%
+  summarize(across(3:63, ~unique(na.omit(.x))),.groups = 'drop')
+
+abundances_fam
+```
+
+### First lets check correlations between alpha diversity metrics and family abundances:
+
+```{r}
+# Save results as data frame
+tax_alpha_cor <- as.data.frame(cor(abundances_fam[, c(6:15)], abundances_fam[,c(16:50)]))
+tax_alpha_cor %>% tibble::rownames_to_column() %>% flextable()
+
+# Plot correlation 
+matrix_tax_alpha <- cor(abundances_fam[, c(6:15)], abundances_fam[,c(16:50)] , method = "spearman")
+corrplot(matrix_tax_alpha, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+```
+
+### Then lets check correlations between SCFA and family abundances:
+
+```{r}
+library(dichromat)
+library(RColorBrewer)
+library(graphics)
+
+
+# Save results as data frame
+tax_SCFA_cor <- as.data.frame(cor(abundances_fam[, c(3:5)], abundances_fam[,c(16:50)]))
+tax_SCFA_cor %>% tibble::rownames_to_column() %>% flextable()
+
+
+scalebluered <- colorRampPalette(brewer.pal(8, "RdBu"))(50)
+
+# Plot correlation 
+matrix_tax_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[,c(16:50)] , method = "spearman")
+
+#corrplot(matrix_tax_SCFA, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE) 
+
+# I did not like how the generic legend looked like, so I decided to generate legend separately. However,
+# I did not know how to put it on right side of the plot to look like the other plots, so I put it on the left side...
+
+corrplot(matrix_tax_SCFA, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n") 
+colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
+```
+
+### Finally, lets check correlations between alpha diversity metrics and SCFA:
+
+```{r}
+# Save results as data frame
+alpha_SCFA_cor <- as.data.frame(cor(abundances_fam[, c(3:5)], abundances_fam[,c(6:15)]))
+alpha_SCFA_cor %>% tibble::rownames_to_column() %>% flextable()
+
+# Plot correlation 
+matrix_alpha_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[,c(6:15)] , method = "spearman")
+corrplot(matrix_alpha_SCFA, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+```
+
+### Correlation plot for family abundancies vs. SCFA and alpha diversity all together:
+
+```{r}
+matrix_all <- cor(abundances_fam[, c(3:15)], abundances_fam[,c(16:50)] , method = "spearman")
+corrplot(matrix_all, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+```
+
+## Taxonomic level: Genus
+
+### Creating a table of abundances on Genus level:
+ 
+```{r}
+# tax_glom function merges species that have the same taxonomy at a certain 
+# taxonomic rank - in this case genus level
+glom <- tax_glom(physeq, taxrank=rank_names(physeq)[6])
+
+# psmelt function melts phyloseq data object into large data.frame 
+smelted_data <- psmelt(glom) 
+
+# Problem with Clostridium!
+abundances_gen <- smelted_data %>% select(-c(Kingdom, Phylum, Class, Order, Family)) %>%
+        spread(Genus, Abundance) %>%
+  group_by(Sample) %>% select(-c(Clostridium)) %>%
+  summarize(across(2:94, ~unique(na.omit(.x))),.groups = 'drop')
+
+abundances_gen
+```
+
+### First lets check correlations between alpha diversity metrics and family abundances:
+
+```{r}
+# Save results as data frame
+tax_alpha_cor <- as.data.frame(cor(abundances_gen[, c(7:16)], abundances_gen[,c(17:94)]))
+tax_alpha_cor %>% tibble::rownames_to_column() %>% flextable()
+
+# Plot correlation 
+matrix_tax_alpha_1 <- cor(abundances_gen[, c(7:16)], abundances_gen[,c(17:55)] , method = "spearman")
+corrplot(matrix_tax_alpha_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+
+matrix_tax_alpha_2 <- cor(abundances_gen[, c(7:16)], abundances_gen[,c(56:94)] , method = "spearman")
+corrplot(matrix_tax_alpha_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+```
+
+### Then lets check correlations between SCFA and family abundances:
+
+```{r}
+# Save results as data frame
+tax_SCFA_cor <- as.data.frame(cor(abundances_gen[, c(4:6)], abundances_gen[,c(17:94)]))
+tax_SCFA_cor %>% tibble::rownames_to_column() %>% flextable()
+
+# Plot correlation 
+matrix_tax_SCFA_1 <- cor(abundances_gen[, c(4:6)], abundances_gen[,c(17:55)] , method = "spearman")
+corrplot(matrix_tax_SCFA_1, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", is.corr = FALSE)
+colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
+
+matrix_tax_SCFA_2 <- cor(abundances_gen[, c(4:6)], abundances_gen[,c(56:94)] , method = "spearman")
+corrplot(matrix_tax_SCFA_2, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", is.corr = FALSE)
+colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
+
+```
+
+### Correlation plot for genus abundancies vs. SCFA and alpha diversity all together:
+
+```{r}
+matrix_all_1 <- cor(abundances_gen[, c(4:16)], abundances_gen[,c(17:55)] , method = "spearman")
+corrplot(matrix_all_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+
+matrix_all_2 <- cor(abundances_gen[, c(4:16)], abundances_gen[,c(56:94)] , method = "spearman")
+corrplot(matrix_all_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+```

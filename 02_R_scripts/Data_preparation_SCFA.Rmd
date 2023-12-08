@@ -1,0 +1,206 @@
+---
+title: "Disease_data_preparation"
+author: "Natasa Mortvanski"
+date: "2023-04-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Disease data preprocessing
+
+Loading necessary libraries:
+
+```{r}
+library(dplyr)
+library(purrr)
+library(stringr)
+library(flextable)
+#install.packages("here")
+library(here)
+library(tidyr)
+```
+
+## Load doanors metadata:
+```{r}
+hosp_donor_meta_all <- read.delim(here("00_raw_data/08_hospital_donor", "sample-metadata.tsv"))
+
+hosp_donor_meta <- dplyr::select(hosp_donor_meta_all, SampleID, Peti)
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'SampleID'] <- 'sample_id'
+names(hosp_donor_meta)[names(hosp_donor_meta) == 'Peti'] <- 'peti'
+
+hosp_donor_meta <- na.omit(hosp_donor_meta) 
+
+#Duplicated entries in the metadata file
+hosp_donor_meta[duplicated(hosp_donor_meta$peti)==TRUE,]
+
+hosp_donor_meta[hosp_donor_meta$peti=="226182837",]
+hosp_donor_meta[hosp_donor_meta$peti=="226182873",]
+
+#Eliminate problematic samples
+
+hosp_donor_meta <- hosp_donor_meta %>%  filter(peti != "226182837" &
+                                               peti != "226182873")
+
+head(hosp_donor_meta)
+```
+
+## Load file connecting IDs of donors with SCFA data:
+
+```{r}
+SCFA_hosp_donor_ID <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "SCFA_normalised_IDS.csv"))
+names(SCFA_hosp_donor_ID)[names(SCFA_hosp_donor_ID) == 'Donor'] <- 'donor'
+names(SCFA_hosp_donor_ID)[names(SCFA_hosp_donor_ID) == 'Peti'] <- 'peti'
+names(SCFA_hosp_donor_ID)[names(SCFA_hosp_donor_ID) == 'Donation.number'] <- 'donation_n'
+
+SCFA_hosp_donor_ID <- SCFA_hosp_donor_ID %>% tidyr::unite("donor_donation", donor:donation_n, remove=FALSE)
+SCFA_hosp_donor_ID <- subset(SCFA_hosp_donor_ID, select = -c(donor, donation_n))
+
+SCFA_hosp_donor_ID <- SCFA_hosp_donor_ID %>% filter(peti != "226182837" & peti != "226182873")
+
+head(SCFA_hosp_donor_ID)
+```
+
+##   Load SCFA data:
+```{r}
+SCFA_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "SCFA_normalised.csv"))
+names(SCFA_hosp_donor)[names(SCFA_hosp_donor) == 'Donor'] <- 'donor'
+names(SCFA_hosp_donor)[names(SCFA_hosp_donor) == 'Donation.number'] <- 'donation_n'
+names(SCFA_hosp_donor)[names(SCFA_hosp_donor) == 'Acetic.acid'] <- 'acetic_acid'
+names(SCFA_hosp_donor)[names(SCFA_hosp_donor) == 'Propionic.acid'] <- 'propionic_acid'
+names(SCFA_hosp_donor)[names(SCFA_hosp_donor) == 'Butyric.acid'] <- 'butyric_acid'
+SCFA_hosp_donor <- SCFA_hosp_donor %>% tidyr::unite("donor_donation", donor:donation_n, remove=FALSE)
+SCFA_hosp_donor <- subset(SCFA_hosp_donor, select = -c(donor, donation_n))
+
+head(SCFA_hosp_donor)
+```
+
+## Merge hosp_donor_meta and SCFA_hosp_donor_ID
+
+```{r}
+IDs <- hosp_donor_meta %>% left_join(SCFA_hosp_donor_ID, by=c('peti' = 'peti'))
+
+SCFA_hosp_donor_ID$peti[duplicated(SCFA_hosp_donor_ID$peti) ==TRUE]
+hosp_donor_meta$peti[duplicated(hosp_donor_meta$peti)==TRUE]
+
+IDs <- IDs[complete.cases(IDs),]
+
+head(IDs)
+```
+
+## Check why IDs and SCFA_hosp_donor tables have different number of samples and fix text differences
+
+```{r}
+dplyr::anti_join(IDs, SCFA_hosp_donor, by = c("donor_donation" = "donor_donation"))
+IDs <- IDs %>% mutate(donor_donation = str_replace(donor_donation, " _", "_"))
+SCFA_hosp_donor <- SCFA_hosp_donor %>% mutate(donor_donation = str_replace(donor_donation, "_22th", "_22nd"))
+SCFA_hosp_donor <- SCFA_hosp_donor %>% mutate(donor_donation = str_replace(donor_donation, "_21th", "_21st"))
+IDs <- IDs %>% mutate(donor_donation = str_replace(donor_donation, "_21th", "_21st"))
+
+
+
+#check after changes
+dplyr::anti_join(IDs, SCFA_hosp_donor, by = c("donor_donation" = "donor_donation"))
+dplyr::anti_join( SCFA_hosp_donor, IDs, by = c("donor_donation" = "donor_donation"))
+
+```
+Samples present in IDs table and not present in SCFA table:
+GFG29M_3rd	
+
+*JMJ44M_4th*	
+
+AJL34M_2nd		
+AJL34M_3rd		
+AJL34M_4th		
+
+Samples present in SCFA table and not present in IDs table:
+
+*GFG29M_16th* (duplicated sample)
+*SMP48F_2nd* (duplicated sample)
+*JMJ44M_3rd*
+
+CLA33F_12th
+SPB34F_3rd
+AGS29F_2.2nd  (in IDs there are two entries of AGS29F_2)
+CGR32F_1st
+RTF49M_9th
+
+
+
+
+## Merge IDs and SCFA_hosp_donor
+```{r}
+SCFA_donors <- IDs %>% left_join(SCFA_hosp_donor, by=c('donor_donation' = 'donor_donation'))
+SCFA_donors <- SCFA_donors[complete.cases(SCFA_donors),]
+
+head(SCFA_donors)
+
+
+# dplyr::anti_join(hosp_donor_meta_all, IDs, by = c("Peti" = "peti"))
+```
+
+
+Export the table of sample IDs to a text file for filtering the samples for QIIME2 analysis:
+```{r}
+write.table(SCFA_alpha_donors$sample_id, "~/Desktop/master_project/Data_Hospital_donors/sample_IDs_SCFA.txt", row.names=FALSE, quote=FALSE, col.names = FALSE)
+```
+
+Use this file to filter fastq files that have SCFA data by applying this bash script:
+
+<!-- #!/bin/bash -->
+
+<!-- mkdir ./SCFA_subset -->
+
+<!-- # Define the input file -->
+<!-- INFILE=~/Desktop/master_project/Data_Hospital_donors/sample_IDs_SCFA.txt -->
+
+<!-- # Read the input file line by line -->
+<!-- while read -r LINE -->
+<!-- do -->
+<!--     #NAME="$LINE" -->
+<!--     printf '%s\n' "$LINE" -->
+<!--     cp $LINE* ./SCFA_subset -->
+<!-- done < "$INFILE" -->
+
+Than execute sript "qiime2_analysis_DADA2_donors.sh" using files in SCFA_subset directory. 
+
+## Import newly calculated alpha deversities
+
+```{r}
+#-----alpha diversity--------
+shannon_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "shannon_hosp_donor.tsv"))
+chao1_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "chao1_hosp_donor.tsv"))
+fisher_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "fisher_hosp_donor.tsv"))
+margalef_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "margalef_hosp_donor.tsv"))
+simpson_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "simpson_hosp_donor.tsv"))
+gini_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "gini_hosp_donor.tsv"))
+menhinick_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "menhinick_hosp_donor.tsv"))
+strong_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "strong_hosp_donor.tsv"))
+faith_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "faith_hosp_donor.tsv"))
+pielou_hosp_donor <- read.delim(here("00_raw_data/08_hospital_donor/SCFA_taxonomy_analysis", "pielou_hosp_donor.tsv"))
+
+all_hosp_donor_alpha <- list(shannon_hosp_donor, chao1_hosp_donor, fisher_hosp_donor, margalef_hosp_donor, gini_hosp_donor, menhinick_hosp_donor, strong_hosp_donor, simpson_hosp_donor, faith_hosp_donor, pielou_hosp_donor) 
+all_hosp_donor_alpha <- all_hosp_donor_alpha %>% reduce(inner_join, by="X")
+names(all_hosp_donor_alpha)[names(all_hosp_donor_alpha) == 'X'] <- 'sample_id'
+
+#------------------------------
+```
+
+```{r}
+SCFA_alpha_donors <- SCFA_donors %>% left_join(all_hosp_donor_alpha, by=c('sample_id' = 'sample_id'))
+
+#Delete problematic sample
+SCFA_alpha_donors <- SCFA_alpha_donors %>%  filter(donor_donation != 'SMP48F_2nd')
+
+head(SCFA_alpha_donors)
+```
+
+
+## Export data frame with SCFA and alpha diversity data into .csv.gz file:
+
+```{r}
+write.table(SCFA_alpha_donors, file = here("01_tidy_data", "SCFA_alpha_donors.tsv"), row.names=FALSE, sep="\t", quote=FALSE)
+```

@@ -1,3 +1,17 @@
+## Things to fix:
+
+# validate if name already exists in the record
+#
+# add sample -> check the date, if date of sampling is later, copy previous entry, if it is earlier, generate new
+#
+# restart app when loading search records
+#
+#
+# add download report option
+#
+# make buttons more pretty
+
+
 #Load libraries
 
 library(shiny)
@@ -443,11 +457,13 @@ server <- function(input, output, session) {
     degfree <- length(hospital_donor)-1
 
     # T-test for Gini index
-    tval_gini <- (gini$gini_index - mean(hospital_donor$gini_index)) / (sd(hospital_donor$gini_index)*sqrt((length(hospital_donor$gini_index)+1) / length(hospital_donor$gini_index)))
+    tval_gini <- (0.976 - mean(hospital_donor$gini_index)) / (sd(hospital_donor$gini_index)*sqrt((length(hospital_donor$gini_index)+1) / length(hospital_donor$gini_index)))
+    #tval_gini <- (gini$gini_index - mean(hospital_donor$gini_index)) / (sd(hospital_donor$gini_index)*sqrt((length(hospital_donor$gini_index)+1) / length(hospital_donor$gini_index)))
     pval_gini <- pt(tval_gini, df=degfree, lower.tail=FALSE)
 
     # T-test for Faith PD
-    tval_faith <- (faith$faith_pd - mean(hospital_donor$faith_pd)) / (sd(hospital_donor$faith_pd)*sqrt((length(hospital_donor$faith_pd)+1) / length(hospital_donor$faith_pd)))
+    #tval_faith <- (faith$faith_pd - mean(hospital_donor$faith_pd)) / (sd(hospital_donor$faith_pd)*sqrt((length(hospital_donor$faith_pd)+1) / length(hospital_donor$faith_pd)))
+    tval_faith <- (25.5 - mean(hospital_donor$faith_pd)) / (sd(hospital_donor$faith_pd)*sqrt((length(hospital_donor$faith_pd)+1) / length(hospital_donor$faith_pd)))
     pval_faith <- pt(tval_faith, df=degfree)
 
     #-----------------------------------------------------------------------
@@ -457,7 +473,8 @@ server <- function(input, output, session) {
       hospital_donor %>% ggplot(aes(x = faith_pd, y = 1)) +
         geom_violin( alpha=0.5, color = "#4E84C4", fill="#9bc3f2", linewidth=1)+
         geom_boxplot(width=0.1, color="#4E84C4", alpha=0.2, linewidth=1) +
-        geom_vline(aes(xintercept = faith$faith_pd), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        #geom_vline(aes(xintercept = faith$faith_pd), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        geom_vline(aes(xintercept = 25.5), color = "#D95F02", linetype = "dashed", linewidth=1)+
         xlab("Faith Phylogenetic Distance") +
         ylab("")+
         theme_classic() +
@@ -468,7 +485,8 @@ server <- function(input, output, session) {
       hospital_donor %>% ggplot(aes(x = gini_index, y = 1)) +
         geom_violin(alpha=0.5, linewidth=1, color = "#1B9E77", fill="#8ae3c9")+
         geom_boxplot(width=0.1, color="#1B9E77", alpha=0.2, linewidth=1) +
-        geom_vline(aes(xintercept = gini$gini_index), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        #geom_vline(aes(xintercept = gini$gini_index), color = "#D95F02", linetype = "dashed", linewidth=1)+
+        geom_vline(aes(xintercept = 0.976), color = "#D95F02", linetype = "dashed", linewidth=1)+
         xlab("Gini index") +
         ylab("")+
         theme_classic() +

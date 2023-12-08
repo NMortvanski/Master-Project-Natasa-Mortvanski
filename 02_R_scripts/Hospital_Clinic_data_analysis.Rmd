@@ -35,6 +35,7 @@ library(ggplotify)
 library(here)
 library(table1)
 library(tidyverse)
+library(writexl)
 ```
 
 Load data: 
@@ -184,8 +185,8 @@ for (i in 1:length(metric)){
     scale_color_manual(values=c('#a6611a','#80cdc1','#018571'))
 }
 
-grid.arrange(box_1[[1]], box_1[[2]], box_1[[3]], box_1[[4]], box_1[[5]], box_1[[6]], ncol=3) 
-grid.arrange(box_1[[7]], box_1[[8]], box_1[[9]], box_1[[10]], ncol=3) 
+grid.arrange(box_1[[1]], box_1[[2]], box_1[[3]], box_1[[4]], box_1[[5]], ncol=3) 
+grid.arrange(box_1[[6]], box_1[[7]], box_1[[8]], box_1[[9]], box_1[[10]], ncol=3) 
 
 ```
 
@@ -287,3 +288,6 @@ grid.arrange(violin_2[[5]], violin_2[[6]], violin_2[[7]], violin_2[[8]], ncol=2)
 grid.arrange(violin_2[[9]], violin_2[[10]], ncol=2, nrow=2)
 
 ```
+
+
+
