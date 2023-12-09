@@ -29,8 +29,6 @@ physeq <- qza_to_phyloseq(
   taxonomy= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/taxonomy.qza",
   metadata = "~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/SCFA_alpha_donors.tsv"
   )
-
-physeq@tax_table
 ```
 
 ## Taxonomic level: Family
@@ -164,6 +162,9 @@ corrplot(matrix_tax_SCFA_2, method="circle", tl.col = "black", tl.srt = 90, cl.p
 colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
 
 ```
+
+* Column "human" (from taxonomy file): k__Bacteria; p__Bacteroidetes; c__Bacteroidia; o__Bacteroidales; f__Rikenellaceae; g__human; s__gut metagenome
+
 
 ### Correlation plot for genus abundancies vs. SCFA and alpha diversity all together:
 
