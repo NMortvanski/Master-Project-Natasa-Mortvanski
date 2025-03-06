@@ -185,9 +185,13 @@ for (i in 1:length(metric)){
     scale_color_manual(values=c('#a6611a','#80cdc1','#018571'))
 }
 
-grid.arrange(box_1[[1]], box_1[[2]], box_1[[3]], box_1[[4]], box_1[[5]], ncol=3) 
-grid.arrange(box_1[[6]], box_1[[7]], box_1[[8]], box_1[[9]], box_1[[10]], ncol=3) 
+#png(file = here("03_plots_and_tables", "box_plot_1_hosp.png"), width = 3000, height = 2000, res = 300)
+grid.arrange(box_1[[1]], box_1[[2]], box_1[[3]], box_1[[4]], box_1[[5]], box_1[[6]], ncol=3) 
+#dev.off()
 
+#png(file = here("03_plots_and_tables", "box_plot_2_hosp.png"), width = 3000, height = 2000, res = 300)
+grid.arrange( box_1[[7]], box_1[[8]], box_1[[9]], box_1[[10]], ncol=3) 
+#dev.off()
 ```
 
 ```{r}
@@ -254,9 +258,13 @@ for (i in 1:length(metric)){
     rremove("legend") +
     scale_color_manual(values=c('#8c510a','#bf812d','#dfc27d','#5ab4ac','#018571'))
 }
-
+#png(file = here("03_plots_and_tables", "compare_all_CDI_1.png"), width = 3000, height = 2000, res = 300)
 grid.arrange(box_2[[1]], box_2[[2]], box_2[[3]], box_2[[4]], box_2[[5]], box_2[[6]], ncol=3) 
+#dev.off()
+
+#png(file = here("03_plots_and_tables", "compare_all_CDI_2.png"), width = 3000, height = 2000, res = 300)
 grid.arrange(box_2[[7]], box_2[[8]], box_2[[9]], box_2[[10]], ncol=3) 
+#dev.off()
 
 ```
 

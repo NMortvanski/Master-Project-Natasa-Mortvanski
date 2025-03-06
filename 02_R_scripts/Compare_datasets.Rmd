@@ -822,7 +822,10 @@ for (i in 1:length(metric)) {
   }
 
 grid.arrange(progression[[2]], progression[[7]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 15)))
+
+#png(file = here("03_plots_and_tables", "progress_c.png"), width = 3000, height = 2000, res = 300)
 grid.arrange(progression[[2]], progression[[7]], progression[[9]], ncol=1, bottom = textGrob("Day since FMT", gp = gpar(fontsize = 12)))
+#dev.off()
 
 # grid.arrange(progression[[1]], progression[[2]], progression[[3]], progression[[4]], progression[[5]], progression[[6]], ncol=2)
 # grid.arrange(progression[[7]], progression[[8]], progression[[9]], progression[[10]], ncol=2, nrow=3)

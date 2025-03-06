@@ -84,7 +84,11 @@ for (i in 1:length(metric2)){
     theme(axis.title.x = element_text(size=14))
 }
 
+#png(file = here("03_plots_and_tables", "density_plot_AGP.png"), width = 3000, height = 2000, res = 300)
+
 grid.arrange(histo[[1]], histo[[2]],histo[[3]], histo[[4]],histo[[5]], histo[[6]],histo[[7]], histo[[8]],histo[[9]], histo[[10]], ncol=3, left = textGrob("density", rot = 90, gp = gpar(fontsize = 14)))
+
+#dev.off()
 ```
 
 ### Testing for normality
@@ -152,7 +156,9 @@ cor_matrix <- cor(only_metrics, method = "spearman")
 colnames(cor_matrix) <-  rep(c("Shannon entropy", "Chao1", "Menhinick", "Margalef", "Fisher alpha", "Gini index", "Strong dominance", "Simpson", "Faith PD", "Pielou evenness"))
 rownames(cor_matrix) = rep(c("Shannon entropy", "Chao1", "Menhinick", "Margalef", "Fisher alpha", "Gini index", "Strong dominance", "Simpson", "Faith PD", "Pielou evenness"))
 
+#png(file = here("03_plots_and_tables", "AGP_density_corr.png"), width = 2000, height = 2000, res = 300) 
 corr_plt <- corrplot(cor_matrix, order = 'hclust', addrect = 3, tl.col = "black", tl.srt = 45)
+#dev.off() 
 ```
 
 ```{r}

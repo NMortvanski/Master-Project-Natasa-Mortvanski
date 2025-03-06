@@ -20,14 +20,15 @@ library(tidyr)
 library(data.table)
 library(corrplot)
 library(flextable)
+library(writexl)
 
 # Creating phyloseq object
 
 physeq <- qza_to_phyloseq(
-  features= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/table-dada2.qza",
-  tree= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/rooted-tree.qza",
-  taxonomy= "~/Desktop/master_project/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/taxonomy.qza",
-  metadata = "~/Desktop/master_project/Master-Project-Natasa-Mortvanski/01_tidy_data/SCFA_alpha_donors.tsv"
+  features= "/media/natasa/Seagate/master_project_25.02.2024/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/table-dada2.qza",
+  tree= "/media/natasa/Seagate/master_project_25.02.2024/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/rooted-tree.qza",
+  taxonomy= "/media/natasa/Seagate/master_project_25.02.2024/Data_Hospital_donors/R2960/SCFA_QIIME2_analysis/taxonomy.qza",
+  metadata = here("01_tidy_data", "SCFA_alpha_donors.tsv")
   )
 ```
 
@@ -43,12 +44,16 @@ glom <- tax_glom(physeq, taxrank=rank_names(physeq)[5])
 # psmelt function melts phyloseq data object into large data.frame 
 smelted_data <- psmelt(glom) 
 
-abundances_fam <- smelted_data %>% select(-c(Kingdom, Phylum, Class, Order)) %>%
-        spread(Family, Abundance) %>%
+abundances_fam <- smelted_data %>% 
+  select(-c(Kingdom, Phylum, Class, Order)) %>%
+  spread(Family, Abundance) %>%
   group_by(Sample) %>%
-  summarize(across(3:63, ~unique(na.omit(.x))),.groups = 'drop')
+  dplyr::summarize(across(3:63, ~unique(na.omit(.x))),.groups = 'drop')
 
 abundances_fam
+
+write.table(abundances_fam, file = here("01_tidy_data", "abundance_family.tsv"), row.names=FALSE, sep="\t", quote=FALSE)
+
 ```
 
 ### First lets check correlations between alpha diversity metrics and family abundances:
@@ -60,7 +65,7 @@ tax_alpha_cor %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
 matrix_tax_alpha <- cor(abundances_fam[, c(6:15)], abundances_fam[,c(16:50)] , method = "spearman")
-corrplot(matrix_tax_alpha, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_tax_alpha, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), insig = "blank")
 ```
 
 ### Then lets check correlations between SCFA and family abundances:
@@ -86,7 +91,7 @@ matrix_tax_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[,c(16:50)] , met
 # I did not like how the generic legend looked like, so I decided to generate legend separately. However,
 # I did not know how to put it on right side of the plot to look like the other plots, so I put it on the left side...
 
-corrplot(matrix_tax_SCFA, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n") 
+corrplot(matrix_tax_SCFA, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", insig = "blank") 
 colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
 ```
 
@@ -98,15 +103,43 @@ alpha_SCFA_cor <- as.data.frame(cor(abundances_fam[, c(3:5)], abundances_fam[,c(
 alpha_SCFA_cor %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
-matrix_alpha_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[,c(6:15)] , method = "spearman")
-corrplot(matrix_alpha_SCFA, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+# Define custom labels
+y_labels <- c("Shannon entropy", "Chao1", "Fisher alpha", "Margalef", "Gini index", "Menhinick", "Strong", "Simpson", "Faith PD", "Pielou evenness")   # Columns 6-15
+x_labels <- c("Acetate", "propionate", "Butyrate")  # Columns 3-5
+
+# Compute correlation matrix
+matrix_alpha_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[, c(6:15)], method = "spearman")
+
+# Rename row and column names
+rownames(matrix_alpha_SCFA) <- x_labels
+colnames(matrix_alpha_SCFA) <- y_labels
+
+# Plot with new labels
+#png(file = here("03_plots_and_tables", "diversity_SCFA_cor.png"), width = 3000, height = 2000, res = 300)
+corrplot(matrix_alpha_SCFA, method = "circle", tl.col = "black", tl.srt = 45, col.lim = c(-1,1), insig = "blank")
+#dev.off()
+```
+```{r}
+# Define custom labels
+y_labels <- c("Shannon entropy", "Chao1", "Fisher alpha", "Margalef", "Gini index", "Menhinick", "Strong", "Simpson", "Faith PD", "Pielou evenness")   # Columns 6-15
+x_labels <- c("Acetate", "propionate", "Butyrate")  # Columns 3-5
+
+# Compute correlation matrix
+matrix_alpha_SCFA <- cor(abundances_fam[, c(3:5)], abundances_fam[, c(6:15)], method = "spearman")
+
+# Rename row and column names
+rownames(matrix_alpha_SCFA) <- x_labels
+colnames(matrix_alpha_SCFA) <- y_labels
+
+# Plot with new labels
+corrplot(matrix_alpha_SCFA, method = "circle", tl.col = "black", tl.srt = 45, col.lim = c(-1,1), insig = "blank")
 ```
 
 ### Correlation plot for family abundancies vs. SCFA and alpha diversity all together:
 
 ```{r}
 matrix_all <- cor(abundances_fam[, c(3:15)], abundances_fam[,c(16:50)] , method = "spearman")
-corrplot(matrix_all, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_all, method="circle", tl.col = "black", tl.srt = 90, col.lim = c(-1,1), insig = "blank")
 ```
 
 ## Taxonomic level: Genus
@@ -125,9 +158,11 @@ smelted_data <- psmelt(glom)
 abundances_gen <- smelted_data %>% select(-c(Kingdom, Phylum, Class, Order, Family)) %>%
         spread(Genus, Abundance) %>%
   group_by(Sample) %>% select(-c(Clostridium)) %>%
-  summarize(across(2:94, ~unique(na.omit(.x))),.groups = 'drop')
+  dplyr::summarize(across(2:94, ~unique(na.omit(.x))),.groups = 'drop')
 
 abundances_gen
+
+write.table(abundances_gen, file = here("01_tidy_data", "abundance_genera.tsv"), row.names=FALSE, sep="\t", quote=FALSE)
 ```
 
 ### First lets check correlations between alpha diversity metrics and family abundances:
@@ -139,10 +174,10 @@ tax_alpha_cor %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
 matrix_tax_alpha_1 <- cor(abundances_gen[, c(7:16)], abundances_gen[,c(17:55)] , method = "spearman")
-corrplot(matrix_tax_alpha_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_tax_alpha_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
 
 matrix_tax_alpha_2 <- cor(abundances_gen[, c(7:16)], abundances_gen[,c(56:94)] , method = "spearman")
-corrplot(matrix_tax_alpha_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_tax_alpha_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
 ```
 
 ### Then lets check correlations between SCFA and family abundances:
@@ -154,11 +189,11 @@ tax_SCFA_cor %>% tibble::rownames_to_column() %>% flextable()
 
 # Plot correlation 
 matrix_tax_SCFA_1 <- cor(abundances_gen[, c(4:6)], abundances_gen[,c(17:55)] , method = "spearman")
-corrplot(matrix_tax_SCFA_1, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", is.corr = FALSE)
+corrplot(matrix_tax_SCFA_1, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", insig = "blank")
 colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
 
 matrix_tax_SCFA_2 <- cor(abundances_gen[, c(4:6)], abundances_gen[,c(56:94)] , method = "spearman")
-corrplot(matrix_tax_SCFA_2, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", is.corr = FALSE)
+corrplot(matrix_tax_SCFA_2, method="circle", tl.col = "black", tl.srt = 90, cl.pos="n", insig = "blank")
 colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r", vertical=TRUE, addlabels=TRUE)
 
 ```
@@ -170,8 +205,74 @@ colorlegend(xlim=c(-3,0), ylim=c(10,5), scalebluered, c(seq(-1,1,1)), align="r",
 
 ```{r}
 matrix_all_1 <- cor(abundances_gen[, c(4:16)], abundances_gen[,c(17:55)] , method = "spearman")
-corrplot(matrix_all_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_all_1, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
 
 matrix_all_2 <- cor(abundances_gen[, c(4:16)], abundances_gen[,c(56:94)] , method = "spearman")
-corrplot(matrix_all_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), is.corr = FALSE)
+corrplot(matrix_all_2, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
+```
+
+## Correlation with p-value
+
+### Family level
+
+```{r}
+abund_fam <- abundances_fam[,3:62]
+abund_fam <- abund_fam[, -c(4:13)]
+
+testRes_fam = cor.mtest(abund_fam, conf.level = 0.95)
+matrix_fam <- cor(abund_fam, method = "spearman")
+
+corrplot(matrix_fam, p.mat = testRes_fam$p, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
+
+# table of p-values
+P_val_fam <- as.data.frame(testRes_fam$p)
+P_val_fam <- P_val_fam[-c(4:50), -c(1:3)]
+
+P_val_fam <- tibble::rownames_to_column(P_val_fam, "SCFA")
+
+# export table
+write_xlsx(P_val_fam, here("03_plots_and_tables", "correlation_p_val_family.xlsx"))
+```
+
+
+
+### Genus level
+
+```{r}
+abund_gen_1 <- abundances_gen[,4:55]
+abund_gen_1 <- abund_gen_1[, -c(4:13)]
+
+testRes_gen_1 <- cor.mtest(abund_gen_1, conf.level = 0.95)
+matrix_gen_1 <- cor(abund_gen_1, method = "spearman")
+
+
+corrplot(matrix_gen_1, p.mat = testRes_gen_1$p, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
+
+# table of p-values
+P_val_gen_1 <- as.data.frame(testRes_gen_1$p)
+P_val_gen_1 <- P_val_gen_1[-c(4:42), -c(1:3)]
+```
+
+```{r}
+abund_gen_2 <- abundances_gen[,4:94]
+abund_gen_2 <- abund_gen_2[, -c(4:52)]
+
+testRes_gen_2 <- cor.mtest(abund_gen_2, conf.level = 0.95)
+matrix_gen_2 <- cor(abund_gen_2, method = "spearman")
+
+#pdf("my_plot.pdf")
+corrplot(matrix_gen_2, p.mat = testRes_gen_2$p, method="circle", tl.col = "black", tl.srt = 90, tl.cex =0.9, col.lim = c(-1,1), insig = "blank")
+#dev.off()
+
+
+# table of p-values
+P_val_gen_2 <- as.data.frame(testRes_gen_2$p)
+P_val_gen_2 <- P_val_gen_2[-c(4:42), -c(1:3)]
+
+# merge tables 
+p_val_gen_all <- cbind(P_val_gen_1, P_val_gen_2)
+p_val_gen_all <- tibble::rownames_to_column(p_val_gen_all, "SCFA")
+
+# export table
+write_xlsx(p_val_gen_all, here("03_plots_and_tables", "correlation_p_val_genus.xlsx"))
 ```
